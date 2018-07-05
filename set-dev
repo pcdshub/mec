@@ -1,0 +1,24 @@
+#!/bin/bash
+MODULE="$1"
+if [ -z "$2" ]; then
+  IMPORT="${MODULE}"
+else
+  IMPORT="$2"
+fi
+if [ -z "$3" ]; then
+  REPO='pcdshub'
+else
+  REPO="$3"
+fi
+
+HERE=`dirname $(readlink -f $0)`
+mkdir -p "${HERE}/dev/devpath"
+
+pushd "${HERE}/dev"
+
+if [ ! -d "${MODULE}" ]; then
+  git clone "https://github.com/${REPO}/${MODULE}.git"
+  ln -s `readlink -f "${MODULE}/${IMPORT}"` "devpath/${IMPORT}"
+fi
+
+popd
