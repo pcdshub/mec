@@ -1,10 +1,5 @@
 #!/bin/bash
 # Source this to load the full environment that hutch python uses
-#HERE=`dirname $(readlink -f $0)`
-#source "${HERE}/mecversion"
-#pathmunge "${CONDA_BASE}/bin"
-#source activate "${CONDA_ENVNAME}"
-##source pcdsdaq_lib_setup
 
 # edit this line only
 export CONDA_ENVNAME="pcds-2.0.1"

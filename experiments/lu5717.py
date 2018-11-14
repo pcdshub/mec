@@ -1,19 +1,17 @@
 import numpy as np
 import time
 import logging
-from bluesky.plans import scan, count
-import bluesky.plan_stubs as bps 
+from bluesky.plans import scan
+import bluesky.plan_stubs as bps
 import bluesky.preprocessors as bpp
-#from bluesky.utils import Msg
-#from ophyd.sim import motor
 from ophyd import (Device, EpicsSignal, EpicsSignalRO, Component as Cpt)
-from mec.db import RE
 from mec.db import seq, daq
 from mec.db import mec_pulsepicker as pp
 from mec.db import tomo_motor, lamo_motor
 from mec.db import tgx, tgy, tgz
 
 logger = logging.getLogger(__name__)
+
 
 class piAxis(Device):
     sens_raw = Cpt(EpicsSignalRO, ':SENSORPOSGET')
@@ -38,18 +36,18 @@ class piAxis(Device):
         if self.mode == 1:
             self.servo_pos_set.put(pos)
         elif self.mode == 0:
-            self.openloop_pos_set.put(pos) 
+            self.openloop_pos_set.put(pos)
         else:
             raise ValueError("Unrecognized piezo mode {}!".format(self.mode))
 
     def wm(self):
-        """Return the current piezo position. The position returned will be  
+        """Return the current piezo position. The position returned will be
         closed-loop or open-loop, depending on the current mode of the piezo
         controller."""
         if self.mode == 1:
             return self.servo_pos_get.get()
         elif self.mode == 0:
-            return self.openloop_pos_get.get() 
+            return self.openloop_pos_get.get()
         else:
             raise ValueError("Unrecognized piezo mode {}!".format(self.mode))
 
@@ -100,11 +98,11 @@ class piHera(Device):
         c1_pos = self.ch1.wm()
         c2_pos = self.ch2.wm()
         c3_pos = self.ch3.wm()
-    
+
         return [c1_pos, c2_pos, c3_pos]
 
     def mv(self, positions):
-        """Move the piezo axes to the specified positions. Takes a list of 
+        """Move the piezo axes to the specified positions. Takes a list of
         three positions, corresponding to ch1, ch2 and ch3, respectively."""
         self.ch1.mv(positions[0])
         self.ch2.mv(positions[1])
@@ -137,9 +135,8 @@ class piHera(Device):
 class User():
 
     pi = piHera('MEC:MZM', name='PI Hera controller')
-    #_tomo_motor = motor # Sim motor for testing
-    _tomo_motor = tomo_motor # Tomography motor, defined in questionnaire
-    _lamo_motor = lamo_motor # Laminography motor, defined in questionnaire
+    _tomo_motor = tomo_motor  # Tomography motor, defined in questionnaire
+    _lamo_motor = lamo_motor  # Laminography motor, defined in questionnaire
 
     def tomo_scan(self, tomo_start, tomo_end, npoints, ndaq, record=True):
         """Return a tomography scan plan.
@@ -181,18 +178,18 @@ class User():
         tomo_scan(75.0, 85.0, 10, record=False)
         """
         # Log stuff
-        logging.debug("Returning a tomography scan with the following parameters:")
+        m = "Returning a tomography scan with the following parameters:"
+        logging.debug(m)
         logging.debug("motor: %s", self._tomo_motor)
         logging.debug("tomo_start: %s", tomo_start)
         logging.debug("tomo_end: %s", tomo_end)
         logging.debug("npoints: %s", npoints)
         logging.debug("record: %s", record)
 
-        # Return the plan 
+        # Return the plan
         return self.__1DScan(self._tomo_motor, tomo_start, tomo_end, npoints,
-                      ndaq, record)
-    
-    
+                             ndaq, record)
+
     def lamo_scan(self, lamo_start, lamo_end, npoints, ndaq, record=True):
         """Return a laminography scan plan.
 
@@ -233,17 +230,17 @@ class User():
         x.lamo_scan(75.0, 85.0, 10, record=False)
         """
         # Log stuff
-        logging.debug("Returning laminography scan with the following parameters:")
+        m = "Returning laminography scan with the following parameters:"
+        logging.debug(m)
         logging.debug("motor: %s", self._lamo_motor)
         logging.debug("lamo_start: %s", lamo_start)
         logging.debug("lamo_end: %s", lamo_end)
         logging.debug("npoints: %s", npoints)
         logging.debug("record: %s", record)
 
-        # Return the plan 
+        # Return the plan
         return self.__1DScan(self._lamo_motor, lamo_start, lamo_end, npoints,
-                      ndaq, record)
-
+                             ndaq, record)
 
     def __1DScan(self, motor, start, end, npoints, ndaq, record):
         # Setup the event sequencer for the scan
@@ -253,14 +250,14 @@ class User():
         # Setup the pulse picker
         if pp.mode.get() == 3:
             logging.debug("The pulse picker is already in burst mode")
-        else:    
+        else:
             logging.debug("Setting up the pulse picker for burst mode")
             pp.burst(wait=True)
 
         # Setup the DAQ
         daq.record = record
         daq.configure(events=ndaq)
-        #bps.configure(daq, events=ndaq) # For plan introspection
+        bps.configure(daq, events=ndaq)  # For plan introspection
 
         # Add sequencer, DAQ to detectors for scan
         dets = [daq, seq]
@@ -274,21 +271,20 @@ class User():
         logging.debug("ndaq: {}".format(ndaq))
         logging.debug("record: {}".format(record))
         logging.debug("detectors: {}".format(dets))
-    
-        # Return the plan 
+
+        # Return the plan
         scan_plan = scan(dets,
-               motor, start, end,
-               npoints)
+                         motor, start, end,
+                         npoints)
 
         final_plan = bpp.finalize_wrapper(scan_plan, self.__cleanup_plan())
 
-        return final_plan 
-
+        return final_plan
 
     def lamo_grid_scan(self, x_start, x_end, xsteps,
-                       y_start, y_end, ysteps, 
+                       y_start, y_end, ysteps,
                        angle, ndaq, record=True):
-        """Return a laminography grid scan plan. 
+        """Return a laminography grid scan plan.
 
         Usage
         -----
@@ -329,7 +325,7 @@ class User():
         Examples
         --------
 
-        # Record 1000 points per scan 
+        # Record 1000 points per scan
         x.lamo_grid_scan(14.853, 14.903, 10, 6.690, 6.740, 10,
                         45, ndaq=1000, record=True)
 
@@ -343,13 +339,12 @@ class User():
         """
 
         grid_plan = self.__grid_scan(tgx, x_start, x_end, xsteps,
-                                    tgy, y_start, y_end, ysteps,
-                                    tgz, angle, ndaq, record)
+                                     tgy, y_start, y_end, ysteps,
+                                     tgz, angle, ndaq, record)
 
         final_plan = bpp.finalize_wrapper(grid_plan, self.__cleanup_plan())
 
-        return final_plan 
-
+        return final_plan
 
     def __grid_scan(self, x_motor, x_start, x_end, xsteps,
                     y_motor, y_start, y_end, ysteps,
@@ -360,14 +355,14 @@ class User():
         # Setup the pulse picker
         if pp.mode.get() == 3:
             logging.debug("The pulse picker is already in burst mode")
-        else:    
+        else:
             logging.debug("Setting up the pulse picker for burst mode")
             pp.burst(wait=True)
 
         # Setup the DAQ
         daq.record = record
         daq.configure(events=ndaq)
-        #bps.configure(daq, events=ndaq) # For plan introspection
+        bps.configure(daq, events=ndaq)  # For plan introspection
 
         # Add sequencer, DAQ to detectors for scan
         dets = [daq, seq]
@@ -397,23 +392,15 @@ class User():
             new_y = y_start+y_step_size*i
             logging.debug("Moving Y to {}".format(new_y))
             yield from bps.mv(y_motor, new_y)
-            if i != 0: # Skip first step; assume focus is fine there
+            if i != 0:  # Skip first step; assume focus is fine there
                 logging.debug("Moving Z by {}".format(z_step))
                 yield from bps.mvr(z_motor, z_step)
-            #for j in range(xsteps):
-            #    new_x = x_start+x_step_size*j
-            #    logging.debug("Moving X to {}".format(new_x))
-            #    yield from bps.mv(x_motor, new_x)
-            #    yield from count(dets, num=1)
-            #    # Give picker time to recover after scan
-            #    yield from bps.sleep(0.2)
-            yield from scan(dets, x_motor, x_start, x_end, xsteps) 
+            yield from scan(dets, x_motor, x_start, x_end, xsteps)
 
         # Return to original positions
         yield from bps.mv(x_motor, x_start)
         yield from bps.mv(y_motor, y_start)
         yield from bps.mv(z_motor, z_start)
-
 
     def __comp_z(self, delta_y, angle):
         """Calculate the amount to compensate in Z direction for motion in the
@@ -422,42 +409,37 @@ class User():
 
         return comp
 
-
     def __setup_sequencer(self, num_points):
         # Do smart stuff with the sequencer now
 
         # Setup dummy sequence (stupid hack for weird sequencer behavior)
-        dummy_sequence = [[0,0,0,0] for i in range(10)]
-        d_sequence = [ arr for arr in zip(*dummy_sequence) ]
+        dummy_sequence = [[0, 0, 0, 0] for i in range(10)]
+        d_sequence = [arr for arr in zip(*dummy_sequence)]
         seq.sequence.put_seq(d_sequence)
         time.sleep(2)
 
         # PP Open line
-        pp_open = [[168, 0, 0, 0]] # Open pulse picker, no delay
+        pp_open = [[168, 0, 0, 0]]  # Open pulse picker, no delay
 
         # Scan trigger
-        pi_line = [[170, 2, 0, 0]] # Give PP 2 beam delays to open 
+        pi_line = [[170, 2, 0, 0]]  # Give PP 2 beam delays to open
 
         # Add most of the daq triggers
-        daq_lines = [ [169, 1, 0, 0] for i in range(num_points-1) ]
+        daq_lines = [[169, 1, 0, 0] for i in range(num_points-1)]
 
         # PP Close line
-        pp_close = [[168, 0, 0, 0]] # Close pulse picker, no delay
+        pp_close = [[168, 0, 0, 0]]  # Close pulse picker, no delay
 
         # Add last DAQ event
-        last_daq = [[169, 1, 0, 0]] 
+        last_daq = [[169, 1, 0, 0]]
 
-        # Add wait time for picker
-        #seq_wait = [[0, 60, 0, 0]]
- 
-        s = pp_open + pi_line + daq_lines + pp_close + last_daq #+ seq_wait
+        s = pp_open + pi_line + daq_lines + pp_close + last_daq
 
-        sequence = [ arr for arr in zip(*s) ]
+        sequence = [arr for arr in zip(*s)]
 
         seq.sequence.put_seq(sequence)
 
-
     def __cleanup_plan(self):
         # Plan to do some cleanup at the end of a scan
-        yield from bps.abs_set(pp.cmd_reset, 1) # Reset pulse picker
-        yield from bps.abs_set(pp.cmd_close, 1) # Close pulse picker
+        yield from bps.abs_set(pp.cmd_reset, 1)  # Reset pulse picker
+        yield from bps.abs_set(pp.cmd_close, 1)  # Close pulse picker
