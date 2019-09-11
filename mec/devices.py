@@ -1,6 +1,7 @@
 from ophyd import (Device, EpicsSignal, EpicsSignalRO, Component as C,
                    FormattedComponent as FC)
 from pcdsdevices import epics_motor
+import time
 
 class TCShutter(Device):
     """Class for shutters used around the MEC target chamber."""
@@ -29,6 +30,15 @@ class TCShutter(Device):
             return True
         else:
             return False
+
+    def stage(self):
+        print("Closing {}...".format(self.name))
+        self.close()
+        time.sleep(0.5)
+
+    def unstage(self):
+        print("Opening {}...".format(self.name))
+        self.open()
 
 
 class LedLights(Device):
@@ -204,3 +214,70 @@ class TargetStage(Device):
             print("Unknown moving status")
 
 
+class TargetXYStage(Device):
+    """Class for MEC target stage. Composite stage consisting of two linear
+    stages. One stage is used for rastering targets in X, while  the other is
+    used to move targets in Y (LUSI coordinates).
+
+    Parameters
+    ----------
+    xstage: stage object
+        Stage used to raster targets in X.
+ 
+    ystage: stage object
+        Stage used to raster targets in Y.
+
+    target_x_space: float
+        Spacing in mm between targets in X.
+
+    target_y_space: float
+        Spacing in mm between targets in Y.
+    ----------
+    """
+   
+    def __init__(self, xstage, ystage, target_x_space, target_y_space): 
+        # Constants.     
+        self.x_space = target_x_space
+        self.y_space = target_y_space
+
+        # Setup stages.
+        self.x = xstage 
+        self.y = ystage 
+    
+    def next(self, num_targets=1):
+        """Move forward (in X) by specified integer number of targets."""
+        targets = int(num_targets)
+        curr_pos = self.x.wm()
+        next_pos = curr_pos + (targets*self.x_space)
+        self.x.mv(next_pos)
+    
+    def back(self, num_targets=1):
+        """Move backward (in X) by specified integer number of targets."""
+        targets = int(num_targets)
+        curr_pos = self.x.wm()
+        next_pos = curr_pos - (targets*self.x_space)
+        self.x.mv(next_pos)
+
+    def up(self, num_targets=1):
+        """Move up by specified integer number of targets (stage moves down)."""
+        targets = int(num_targets)
+        curr_pos = self.y.wm()
+        next_pos = curr_pos - (targets*self.y_space)
+        self.y.mv(next_pos)
+
+    def down(self, num_targets=1):
+        """Move down by specified integer number of targets (stage moves up)."""
+        targets = int(num_targets)
+        curr_pos = self.y.wm()
+        next_pos = curr_pos + (targets*self.y_space)
+        self.y.mv(next_pos)
+    
+    @property
+    def moving(self):
+        """Returns True if hexapod or target stage is moving, False otherwise."""
+        xmoving = self.x.moving
+        ymoving = self.y.moving
+        if xmoving == True or ymoving == True:
+            return True
+        else:
+            return False
