@@ -20,10 +20,11 @@ class SlowCameras():
 
     def stage(self, laser_config):
         # Set exposure delay using laser config
-        ExposureTime = laser_config['slowcamdelay']/120.0 
+        ExposureTime = laser_config['slowcamdelay'] 
         newkey = self._cdb.get_key(self.alias)
-    
+        print("Before partition")    
         partition = daq._control.partition()
+        print("After partition")    
 
         lAllocatedPrinceton = []
         lAllocatedFli       = []
@@ -48,6 +49,7 @@ class SlowCameras():
                 lAllocatedPixis.append((phy,devNo))
 
         for (phy,iCamera) in lAllocatedPrinceton:
+            print("Before lXtc")
             lXtcPrinceton = self._cdb.get(key=newkey,src=phy)
             print("Princeton %d (detector id: 0x%x)" % (iCamera, phy))
             if len(lXtcPrinceton) != 1:
