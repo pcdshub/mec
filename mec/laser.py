@@ -74,7 +74,7 @@ class Laser():
     @__rate.setter
     def __rate(self, value):
         self._config['rate'] = value
-    
+
     @property
     def predark(self):
         """The number of pre-dark shots to take for a given sequence."""
@@ -311,7 +311,6 @@ class Laser():
     def _single_shot_plan(self, record=True, use_l3t=False, controls=[],
                            end_run=True):
         """Definition of plan for taking laser shots with the MEC laser."""
-        # TODO: Setup slowcam
         # TODO: Add attenuator control
 
         logging.debug("Generating shot plan using _shot_plan.")
@@ -351,6 +350,13 @@ class Laser():
 
         for det in dets:
             yield from bps.stage(det)
+
+        # Check for slow cameras, stage if requested
+        if self._config['slowcam']:
+            from .slowcams import SlowCameras
+            self._slowcams = SlowCameras()
+            dets.append(self._slowcams) # Add this in to auto-unstage later
+            yield from bps.stage(self._slowcams)
 
         # Setup the pulse picker for single shots in flip flop mode
         #pp.flipflop(wait=True)

@@ -41,7 +41,8 @@ def generateSequence(code_list, total_beamdelta):
     max_beamdelta = max([code[1] for code in sorted_codes])
 
     # Check that the whole sequence will fit in one sync marker
-    # TODO: Update function so this isn't a problem? Can that be done?
+    # TODO: Update function so this isn't a problem? Can that be done? Is it even a problem?
+
     if max_beamdelta > total_beamdelta:
         raise Exception("The maximum event code beam delta exceeds the sync "
                         "marker! Please edit your sequence.")
