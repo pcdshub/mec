@@ -110,6 +110,11 @@ with safe_load('Attenuator'):
     from pcdsdevices.attenuator import Attenuator
     att = Attenuator('IOC:MEC:ATT', 10, name='mec attenuator')
 
+with safe_load('Visar Beds'):
+    from .visar_bed import VisarBed
+    bed1=VisarBed('MEC:NOTE:VIS:CAM1', name="Visar Bed1")
+    bed2=VisarBed('MEC:NOTE:VIS:CAM2', name="Visar Bed2")
+
 with safe_load('long pulse waveplates'):
     from pcdsdevices import epics_motor
     wp_ab = epics_motor.IMS('MEC:NS1:MMS:02', name='waveplate AB')
