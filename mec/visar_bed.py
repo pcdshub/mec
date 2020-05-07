@@ -22,7 +22,7 @@ class VisarBed(Device):
     """
     # Epics Signals
     etalon_h = C(EpicsSignal,    '_ETALON_H')
-    z_t0     = C(EpicsSignalRO,  '_Z_T0')
+    z_t0     = C(EpicsSignal,    '_Z_T0')
 
     def __init__(self, prefix, *args, **kwargs):
         super().__init__(prefix, *args, **kwargs)
