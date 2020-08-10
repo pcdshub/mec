@@ -32,18 +32,18 @@ with safe_load('target x'):
     target_x = epics_motor.IMS('MEC:USR:MMS:17', name='target x')
 
 
-#with safe_load('target hexapod'):
-#    from .devices import PI_M824_Hexapod 
-#    tc_hexapod = PI_M824_Hexapod('MEC:HEX:01', name='target hexapod') 
-#
-#    from .devices import TargetStage
-#    target = TargetStage(target_x, tc_hexapod, 0.75, 0.75)
+with safe_load('target hexapod'):
+    from .devices import PI_M824_Hexapod 
+    tc_hexapod = PI_M824_Hexapod('MEC:HEX:01', name='target hexapod') 
 
-with safe_load('target xy stage'):
-    from .devices import TargetXYStage
-    from pcdsdevices import epics_motor 
-    target_y = epics_motor.Newport('MEC:PPL:MMN:09', name='target y')
-    tgt = TargetXYStage(target_x, target_y, 3.7, 3.5)
+    from .devices import TargetStage
+    target = TargetStage(target_x, tc_hexapod, 0.75, 0.75)
+
+#with safe_load('target xy stage'):
+#    from .devices import TargetXYStage
+#    from pcdsdevices import epics_motor 
+#    target_y = epics_motor.Newport('MEC:PPL:MMN:09', name='target y')
+#    tgt = TargetXYStage(target_x, target_y, 3.7, 3.5)
 
 #with safe_load('event sequencer'):
 #    from pcdsdevices.sequencer import EventSequencer
@@ -51,6 +51,7 @@ with safe_load('target xy stage'):
 
 with safe_load('event sequencer'):
     from pcdsdevices.sequencer import EventSequencer
+#    seq = EventSequencer('ECS:SYS0:6', name='seq_6')
     seq = EventSequencer('FAKE:ECS:SYS0:6', name='seq_6')
 
 #with safe_load('fake event sequencer'):
