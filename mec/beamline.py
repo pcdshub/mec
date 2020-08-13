@@ -70,15 +70,16 @@ with safe_load('slits'):
 
 
 with safe_load('YAG screens'): # Also known as PIMs
-    from pcdsdevices.pim import PIM
-    from pcdsdevices.pim import PIMMotor
-    #mec_yag0 = mec_pim1
-    mec_yag0 = PIM('HXX:UM6:MMS:08', prefix_det='HXX:UM6:CVV:01', name='mec yag0')# ==works
-    mec_yag1 = PIM('MEC:HXM:MMS:16', prefix_det='MEC:HXM:CVV:01', name='mec yag1')# ==works
-    mec_yag2 = PIMMotor('MEC:XT2:MMS:13', name='mec yag2')
-    #mec_yag2 = PIM('MEC:XT2:MMS:13', prefix_det='MEC:XT2:CVV:01', name='mec yag2')# !=works
-    mec_yag3 = PIMMotor('MEC:XT2:MMS:29', name='mec yag3')
-    #mec_yag3 = PIM('MEC:XT2:MMS:29', prefix_det='MEC:XT2:CVV:02', name='mec yag3')# !=works
+    from pcdsdevices.pim import PIM, PIMY
+    mec_yag0 = PIMY('HXX:HXM:PIM', name='mec yag0')
+    yag0 = mec_yag0
+    mec_yag1 = PIMY('MEC:HXM:PIM', name='mec yag1')
+    yag1 = mec_yag1
+    mec_yag2 = PIMY('MEC:PIM2', name='mec yag2')
+    yag2 = mec_yag2
+    mec_yag3 = PIMY('MEC:PIM3', name='mec yag3')
+    yag3 = mec_yag3
+
     def yags_out():
         mec_yag0.remove()
         time.sleep(0.1)
@@ -107,9 +108,12 @@ with safe_load('Highland'):
     from .laser_devices import Highland
     nsl_highland = Highland('MEC:LPL:AMD:01', name='mec highland')
 
-with safe_load('Attenuator'):
-    from pcdsdevices.attenuator import Attenuator
-    att = Attenuator('IOC:MEC:ATT', 10, name='mec attenuator')
+with safe_load('SiT'):
+    from mec.db import mec_attenuator
+    SiT = mec_attenuator
+#    from pcdsdevices.attenuator import Attenuator
+#    att = Attenuator('IOC:MEC:ATT', 10, name='mec attenuator')
+
 
 with safe_load('Visar Beds'):
     from .visar_bed import VisarBed
