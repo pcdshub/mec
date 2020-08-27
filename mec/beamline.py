@@ -32,18 +32,18 @@ with safe_load('target x'):
     target_x = epics_motor.IMS('MEC:USR:MMS:17', name='target x')
 
 
-#with safe_load('target hexapod'):
-#    from .devices import PI_M824_Hexapod 
-#    tc_hexapod = PI_M824_Hexapod('MEC:HEX:01', name='target hexapod') 
-#
-#    from .devices import TargetStage
-#    target = TargetStage(target_x, tc_hexapod, 0.75, 0.75)
+with safe_load('target hexapod'):
+    from .devices import PI_M824_Hexapod 
+    tc_hexapod = PI_M824_Hexapod('MEC:HEX:01', name='target hexapod') 
 
-with safe_load('target xy stage'):
-    from .devices import TargetXYStage
-    from pcdsdevices import epics_motor 
-    target_y = epics_motor.Newport('MEC:PPL:MMN:09', name='target y')
-    tgt = TargetXYStage(target_x, target_y, 3.7, 3.5)
+    from .devices import TargetStage
+    target = TargetStage(target_x, tc_hexapod, 0.75, 0.75)
+
+#with safe_load('target xy stage'):
+#    from .devices import TargetXYStage
+#    from pcdsdevices import epics_motor 
+#    target_y = epics_motor.Newport('MEC:PPL:MMN:09', name='target y')
+#    tgt = TargetXYStage(target_x, target_y, 3.7, 3.5)
 
 #with safe_load('event sequencer'):
 #    from pcdsdevices.sequencer import EventSequencer
@@ -51,6 +51,7 @@ with safe_load('target xy stage'):
 
 with safe_load('event sequencer'):
     from pcdsdevices.sequencer import EventSequencer
+#    seq = EventSequencer('ECS:SYS0:6', name='seq_6')
     seq = EventSequencer('FAKE:ECS:SYS0:6', name='seq_6')
 
 #with safe_load('fake event sequencer'):
@@ -69,15 +70,16 @@ with safe_load('slits'):
 
 
 with safe_load('YAG screens'): # Also known as PIMs
-    from pcdsdevices.pim import PIM
-    from pcdsdevices.pim import PIMMotor
-    #mec_yag0 = mec_pim1
-    mec_yag0 = PIM('HXX:UM6:MMS:08', prefix_det='HXX:UM6:CVV:01', name='mec yag0')# ==works
-    mec_yag1 = PIM('MEC:HXM:MMS:16', prefix_det='MEC:HXM:CVV:01', name='mec yag1')# ==works
-    mec_yag2 = PIMMotor('MEC:XT2:MMS:13', name='mec yag2')
-    #mec_yag2 = PIM('MEC:XT2:MMS:13', prefix_det='MEC:XT2:CVV:01', name='mec yag2')# !=works
-    mec_yag3 = PIMMotor('MEC:XT2:MMS:29', name='mec yag3')
-    #mec_yag3 = PIM('MEC:XT2:MMS:29', prefix_det='MEC:XT2:CVV:02', name='mec yag3')# !=works
+    from pcdsdevices.pim import PIM, PIMY
+    mec_yag0 = PIMY('HXX:HXM:PIM', name='mec yag0')
+    yag0 = mec_yag0
+    mec_yag1 = PIMY('MEC:HXM:PIM', name='mec yag1')
+    yag1 = mec_yag1
+    mec_yag2 = PIMY('MEC:PIM2', name='mec yag2')
+    yag2 = mec_yag2
+    mec_yag3 = PIMY('MEC:PIM3', name='mec yag3')
+    yag3 = mec_yag3
+
     def yags_out():
         mec_yag0.remove()
         time.sleep(0.1)
@@ -106,9 +108,12 @@ with safe_load('Highland'):
     from .laser_devices import Highland
     nsl_highland = Highland('MEC:LPL:AMD:01', name='mec highland')
 
-with safe_load('Attenuator'):
-    from pcdsdevices.attenuator import Attenuator
-    att = Attenuator('IOC:MEC:ATT', 10, name='mec attenuator')
+with safe_load('SiT'):
+    from mec.db import mec_attenuator
+    SiT = mec_attenuator
+#    from pcdsdevices.attenuator import Attenuator
+#    att = Attenuator('IOC:MEC:ATT', 10, name='mec attenuator')
+
 
 with safe_load('Visar Beds'):
     from .visar_bed import VisarBed
