@@ -363,8 +363,8 @@ class Sequence:
         eventcodes = []
         eventcodes.append([self.EC['pulsepicker'], 2])
         eventcodes.append([self.EC['daqreadout'], 0])
-        eventcodes.append([self.EC['longpulse', 0])
-        eventcodes.append([self.EC['shortpulse', 0])
+        eventcodes.append([self.EC['longpulse'], 0])
+        eventcodes.append([self.EC['shortpulse'], 0])
         if self.slowcam:
             eventcodes.append([self.EC['slowcam'], self.slowcamdelay])
         if self.prelasertrig > 0:
