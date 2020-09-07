@@ -359,7 +359,7 @@ class Laser():
             yield from bps.stage(self._slowcams)
 
         # Setup the pulse picker for single shots in flip flop mode
-        #pp.flipflop(wait=True)
+        pp.flipflop(wait=True)
 
         # Setup sequencer for requested rate
         sync_mark = int(self._sync_markers[self._config['rate']])
@@ -782,3 +782,130 @@ class FemtoSecondLaser(Laser):
         return inner(motor1, m1_start, m1_end, motor2, m2_start, m2_end, 
                      m2_steps, predelay, postdelay, record, use_l3t, controls,
                      end_run, carriage_return)
+
+class DualLaser(Laser):
+    """
+    Class for firing both the shortpulse and longpulse lasers at the same
+    time.
+    """
+    def __init__(self):
+        laser = 'dual'
+        super().__init__(laser, Rate=10, PreDark=0, PreX=0, PreO=0, PostDark=0,
+                         PostX=0, PostO=0, During=0, PreLaserTrig=0, 
+                         SlowCam=False, SlowCamDelay=5, Shutters=[1,2,3,4,5,6])
+
+    def _single_shot_plan(self, record=True, use_l3t=False, controls=[],
+                           end_run=True):
+        """Definition of plan for taking laser shots with the MEC laser."""
+        # TODO: Add attenuator control
+
+        logging.debug("Generating shot plan using _shot_plan.")
+        logging.debug("_shot_plan config:")
+        logging.debug("{}".format(self._config))
+        logging.debug("Record: {}".format(record))
+        logging.debug("use_l3t: {}".format(use_l3t))
+        logging.debug("controls: {}".format(controls))
+
+        # Make sure that any updates to configuration are applied
+        self.configure(self._config)
+
+        # Setup the daq based on config
+        total_shots = 1
+
+        print("Configured for {} total shots.".format(total_shots))
+        logging.debug("Total shots: {}".format(total_shots))
+    
+        yield from bps.configure(daq, begin_sleep=2, record=record, use_l3t=use_l3t, controls=controls)
+
+        # Add sequencer, DAQ to detectors for shots
+        dets = [daq, seq]
+
+        for det in dets:
+            yield from bps.stage(det)
+
+        # Check for slow cameras, stage if requested
+        if self._config['slowcam']:
+            from .slowcams import SlowCameras
+            self._slowcams = SlowCameras()
+            dets.append(self._slowcams) # Add this in to auto-unstage later
+            yield from bps.stage(self._slowcams)
+
+        # Setup the pulse picker for single shots in flip flop mode
+        pp.flipflop(wait=True)
+
+        # Setup sequencer for requested rate
+        sync_mark = int(self._sync_markers[self._config['rate']])
+        seq.sync_marker.put(sync_mark)
+        seq.play_mode.put(0) # Run sequence once
+
+        # Dual (FSL + NSL + XFEL) shots
+        shots = total_shots
+        logging.debug("Configuring for {} dual shots".format(shots))
+        yield from bps.configure(daq, events=shots)
+
+        # Preshot dark, so use preshot laser marker
+        dual_seq = self._seq.dualDuringSequence()
+        seq.sequence.put_seq(dual_seq)
+
+        # Number of shots is determined by sequencer, so just trigger/read
+        print("Taking {} predark shots ... ".format(shots)
+        yield from bps.trigger_and_read(dets)
+
+        for det in dets:
+            yield from bps.unstage(det)
+
+        if end_run:
+            daq.end_run()
+
+    def shot(self, record=True, use_l3t=False, controls=[], end_run=True):
+        """
+        Return a plan for executing a dual laser shot.
+
+        Parameters
+        ----------
+        record : bool
+            Select whether the run will be recorded or not. Defaults to True.
+
+        use_l3t : bool
+            Select whether the run will use a level 3 trigger or not. Defaults
+            to False.
+
+        controls : list
+            List of controls devices to include values into the DAQ data stream
+            as variables. All devices must have a name attribute. Defaults to
+            empty list.
+
+        end_run : bool
+            Select whether or not to end the run after the shot. Defaults to
+            True.
+
+        Examples
+        --------
+        # Take a shot immediately, don't record
+
+        RE(laser.shot(record=False))
+
+        # Take a shot immediately, record
+
+        RE(laser.shot(record=True))
+
+        # Initialize the shot, record a shot at some later time when RE(p) is
+        # called. 
+
+        p = laser.shot(record=True)
+        ...
+        RE(p)
+        """
+
+        dev = []
+        for shutter in self._config['shutters']:
+            dev.append(self._shutters[shutter])
+
+        @bpp.stage_decorator(dev)
+        @bpp.run_decorator()
+        def inner(record, use_l3t, controls, end_run):
+            plan = self._single_shot_plan(record, use_l3t, controls, end_run)
+
+            return plan
+
+        return inner(record, use_l3t, controls, end_run)

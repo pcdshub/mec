@@ -350,3 +350,27 @@ class Sequence:
             
         return seq
 
+
+    def dualDuringSequence(self):
+        """
+        Setup a 'dual' during sequence ( FSL + NSL + XFEL).
+
+        Sets up a single shot. 
+        """
+        bd = int(120/self.rate) # Beam deltas per laser shot
+
+        # Setup the shot
+        eventcodes = []
+        eventcodes.append([self.EC['pulsepicker'], 2])
+        eventcodes.append([self.EC['daqreadout'], 0])
+        eventcodes.append([self.EC['longpulse', 0])
+        eventcodes.append([self.EC['shortpulse', 0])
+        if self.slowcam:
+            eventcodes.append([self.EC['slowcam'], self.slowcamdelay])
+        if self.prelasertrig > 0:
+            eventcodes.append([self.EC['prelasertrig'], self.prelasertrig])
+
+        seq = generateSequence(eventcodes, bd)
+            
+        return seq
+
