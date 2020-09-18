@@ -343,7 +343,7 @@ class Laser():
         print("Configured for {} total shots.".format(total_shots))
         logging.debug("Total shots: {}".format(total_shots))
     
-        yield from bps.configure(daq, begin_sleep=2, record=record, use_l3t=use_l3t, controls=controls)
+        yield from bps.configure(daq, events=0, begin_sleep=2, record=record, use_l3t=use_l3t, controls=controls)
 
         # Add sequencer, DAQ to detectors for shots
         dets = [daq, seq]
@@ -371,7 +371,7 @@ class Laser():
             # Get number of predark shots
             shots = self._config['predark']
             logging.debug("Configuring for {} predark shots".format(shots))
-            yield from bps.configure(daq, events=shots)
+#            yield from bps.configure(daq, events=shots)
 
             # Preshot dark, so use preshot laser marker
             pre_dark_seq = self._seq.darkSequence(shots, preshot=True)
@@ -386,7 +386,7 @@ class Laser():
             # Get number of prex shots
             shots = self._config['prex']
             logging.debug("Configuring for {} prex shots".format(shots))
-            yield from bps.configure(daq, events=shots)
+#            yield from bps.configure(daq, events=shots)
 
             # Preshot x-ray only shots, so use preshot laser marker
             prex_seq = self._seq.darkXraySequence(shots, preshot=True)
@@ -401,7 +401,7 @@ class Laser():
             # Get number of preo shots
             shots = self._config['preo']
             logging.debug("Configuring for {} preo shots".format(shots))
-            yield from bps.configure(daq, events=shots)
+#            yield from bps.configure(daq, events=shots)
 
             # Optical only shot, with defined laser
             preo_seq = self._seq.opticalSequence(shots, self._config['laser'],\
@@ -417,7 +417,7 @@ class Laser():
             # Get number of during shots
             shots = self._config['during']
             logging.debug("Configuring for {} during shots".format(shots))
-            yield from bps.configure(daq, events=shots)
+#            yield from bps.configure(daq, events=shots)
 
             # During shot, with defined laser
             during_seq = self._seq.duringSequence(shots, self._config['laser'])
@@ -432,7 +432,7 @@ class Laser():
             # Get number of post optical shots
             shots = self._config['posto']
             logging.debug("Configuring for {} posto shots".format(shots))
-            yield from bps.configure(daq, events=shots)
+#            yield from bps.configure(daq, events=shots)
 
             # Optical only shot, with defined laser
             posto_seq = self._seq.opticalSequence(shots, self._config['laser'],\
@@ -448,7 +448,7 @@ class Laser():
             # Get number of postx shots
             shots = self._config['postx']
             logging.debug("Configuring for {} postx shots".format(shots))
-            yield from bps.configure(daq, events=shots)
+#            yield from bps.configure(daq, events=shots)
 
             # Postshot x-ray only shots, so use postshot laser marker
             postx_seq = self._seq.darkXraySequence(shots, preshot=False)
@@ -463,7 +463,7 @@ class Laser():
             # Get number of postdark shots
             shots = self._config['postdark']
             logging.debug("Configuring for {} postdark shots".format(shots))
-            yield from bps.configure(daq, events=shots)
+#            yield from bps.configure(daq, events=shots)
 
             # Postshot dark, so use postshot laser marker
             post_dark_seq = self._seq.darkSequence(shots, preshot=False)
@@ -848,7 +848,7 @@ class DualLaser(Laser):
         seq.sequence.put_seq(dual_seq)
 
         # Number of shots is determined by sequencer, so just trigger/read
-        print("Taking {} predark shots ... ".format(shots)
+        print("Taking {} shots shots ... ".format(shots))
         yield from bps.trigger_and_read(dets)
 
         for det in dets:
@@ -868,8 +868,7 @@ class DualLaser(Laser):
 
         use_l3t : bool
             Select whether the run will use a level 3 trigger or not. Defaults
-            to False.
-
+            to False.  
         controls : list
             List of controls devices to include values into the DAQ data stream
             as variables. All devices must have a name attribute. Defaults to
