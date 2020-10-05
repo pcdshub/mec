@@ -47,12 +47,16 @@ class TimingChannel(object):
         currval = self.control_PV.get()
         self.control_PV.put(currval - relval)
 
+    def mv(self, val):
+        t0 = self.storage_PV.get()
+        self.control_PV.put(t0 - val)
+
     def get_delay(self, verbose=False):
         delay = self.control_PV.get() - self.storage_PV.get()
         if delay > 0:
-            print("X-rays arrive {} s before the optical laser".format(delay))
+            print("X-rays arrive {} s before the optical laser".format(abs(delay)))
         elif delay < 0:
-            print("X-rays arrive {} s after the optical laser".format(delay))
+            print("X-rays arrive {} s after the optical laser".format(abs(delay)))
         else: # delay is 0
             print("X-rays arrive at the same time as the optical laser")
         if verbose:
@@ -78,6 +82,11 @@ class FSTiming(object):
         newval = currval - (relval * 1e9) 
         self._channel.control_PV.put(newval)
 
+    def mv(self, val):
+        t0 = self._channel.storage_PV.get()
+        newval = t0 - (val * 1e9) 
+        self._channel.control_PV.put(newval)
+
     def get_delay(self, verbose=False):
         t0 = self._channel.storage_PV.get()
         currval = self._channel.control_PV.get()
@@ -86,9 +95,9 @@ class FSTiming(object):
         if diff == 0: 
             print("Xrays are co-timed with the optical laser")
         elif diff < 0:
-            print("Xrays arrive {0:.2f} fs before the optical laser".format(diff*1.0e6))
+            print("Xrays arrive {0:.2f} fs before the optical laser".format(abs(diff*1.0e6)))
         else:
-            print("Xrays arrive {0:.2f} fs after the optical laser".format(diff*1.0e6))
+            print("Xrays arrive {0:.2f} fs after the optical laser".format(abs(diff*1.0e6)))
 
 class NSTiming(object):
     _channels = [\
@@ -108,6 +117,10 @@ class NSTiming(object):
     def mvr(self, relval):
         for channel in self._channels:
             channel.mvr(relval)
+
+    def mv(self, val):
+        for channel in self._channels:
+            channel.mv(val)
 
     def get_delay(self, verbose=False):
         for channel in self._channels:
@@ -186,12 +199,12 @@ class User():
             self._shutters[shutter].close()
 
         # Block THz generation
-        print("Blocking THz generation...")
-        yield from bps.mv(self.thz_motor, self.thz_blocked_pos, wait=True)
-
-        # Block SPL
-        print("Blocking Short Pulse...")
-        yield from bps.mv(self.spl_motor, self.spl_blocked_pos, wait=True)
+#        print("Blocking THz generation...")
+#        yield from bps.mv(self.thz_motor, self.thz_blocked_pos, wait=True)
+#
+#        # Block SPL
+#        print("Blocking Short Pulse...")
+#        yield from bps.mv(self.spl_motor, self.spl_blocked_pos, wait=True)
 
         print("Configuring DAQ...")
 #        daq.configure(events=1, record=record)
@@ -250,13 +263,13 @@ class User():
         for shutter in self.shutters:
             self._shutters[shutter].close()
 
-        # Block THz generation
-        print("Blocking THz generation...")
-        yield from bps.mv(self.thz_motor, self.thz_blocked_pos, wait=True)
-
-        # Block SPL
-        print("Blocking Short Pulse...")
-        yield from bps.mv(self.spl_motor, self.spl_blocked_pos, wait=True)
+#        # Block THz generation
+#        print("Blocking THz generation...")
+#        yield from bps.mv(self.thz_motor, self.thz_blocked_pos, wait=True)
+#
+#        # Block SPL
+#        print("Blocking Short Pulse...")
+#        yield from bps.mv(self.spl_motor, self.spl_blocked_pos, wait=True)
 
 #        print("Configuring DAQ...")
 #        daq.configure(events=nshots, record=record)
