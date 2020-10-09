@@ -51,8 +51,8 @@ with safe_load('target hexapod'):
 
 with safe_load('event sequencer'):
     from pcdsdevices.sequencer import EventSequencer
-#    seq = EventSequencer('ECS:SYS0:6', name='seq_6')
-    seq = EventSequencer('FAKE:ECS:SYS0:6', name='seq_6')
+    seq = EventSequencer('ECS:SYS0:6', name='seq_6')
+#    seq = EventSequencer('FAKE:ECS:SYS0:6', name='seq_6')
 
 #with safe_load('fake event sequencer'):
 #    from pcdsdevices.sequencer import EventSequencer
