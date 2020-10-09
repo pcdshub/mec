@@ -140,6 +140,11 @@ with safe_load('daq'):
 #    from .laser import NanoSecondLaser
 #    nsl = NanoSecondLaser()
 
+with safe_load('mec timing'):
+    from .mec_timing import FSTiming, NSTiming, lpl_save_master_timing
+    fstiming = FSTiming()
+    nstiming = NSTiming()
+
 with safe_load('SPL Modes'):
     from .spl_modes import DG645
     from .spl_modes import UniblitzEVRCH
