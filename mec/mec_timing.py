@@ -1,5 +1,7 @@
 from ophyd.signal import EpicsSignal, EpicsSignalRO
 
+from pcdsdevices.epics_motor import Motor
+
 
 class TimingChannel(object):
     def __init__(self, setpoint_PV, readback_PV, name):
@@ -53,6 +55,27 @@ class TimingChannel(object):
 class FSTiming(object):
     def __init__(self):
         self._channel = TimingChannel('LAS:FS6:VIT:FS_TGT_TIME', 'MEC:NOTE:LAS:FST0', 'FSTiming')
+        sefl._tt_motor = Motor('MEC:LAS:MMN:19', name='tt_comp_motor')
+
+    def _calc_tt_comp(self, t):
+        """
+        Calculate the distance to move the time tool motor to compensate for
+        changes in the VITARA target time. Keeps the time tool signal in the
+        camera window.
+
+        The delay stage is a "trombone" configuration, so the delay is
+        calculated using the formula:
+
+        d = t * c/2
+
+        where t is the difference in arrival time, and c is the speed of light. 
+
+        Motor moving in the negative direction compensates for a positive
+        change in arrival time.
+        """
+        d = (t*2.99792458e8*1.0e3))/2 # in mm
+
+        return d
 
     def save_t0(self, val=None):
         self._channel.save_t0(val)
@@ -65,10 +88,13 @@ class FSTiming(object):
         newval = currval - (relval * 1e9) 
         self._channel.control_PV.put(newval)
 
-    def mv(self, val):
+    def mv(self, val, tt_comp=True):
         t0 = self._channel.storage_PV.get()
         newval = t0 - (val * 1e9) 
         self._channel.control_PV.put(newval)
+        if tt_comp:
+            d = self._calc_tt_comp(newval) # Relative or absolute here?
+            self._tt_motor.mvr(d)
 
     def get_delay(self, verbose=False):
         t0 = self._channel.storage_PV.get()
