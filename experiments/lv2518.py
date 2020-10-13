@@ -46,11 +46,13 @@ class User():
         print("Opening shutters...")
         for shutter in self.shutters:
             self._shutters[shutter].open()
+        time.sleep(5)
 
     def close_shutters(self):
         print("Closing shutters...")
         for shutter in self.shutters:
             self._shutters[shutter].close()
+        time.sleep(5)
 
     def x_scan(self, nshots=1, record=True, xrays=False, carriage_return=False):
         """
@@ -96,6 +98,9 @@ class User():
             s = self._seq.opticalSequence(1, 'shortpulse')
         seq.sequence.put_seq(s)
 
+        self._shutters[6].close()
+        time.sleep(5)
+
         # Get starting positions
         start = self.grid.wm()
         yield from scan([daq, seq], self.grid.x, start['x'], 
@@ -108,6 +113,8 @@ class User():
             yield from bps.mv(self.grid.y, start['y'])
 
         daq.end_run()
+
+        self._shutters[6].open()
 
 
     def _x_position(self, xstart, xspacing, ix, iy, dxx=0.0, dxy=0.0):
@@ -281,6 +288,10 @@ class User():
                                            dxy=self.grid.x_comp, dyy=0.0,
                                            dyx=self.grid.y_comp)
 
+        # Close shutter 6 (requested)
+        self._shutters[6].close()
+        time.sleep(5)
+
         # Scan the thing
         def inner():
             yield from list_scan([daq, seq], self.grid.y, yl, self.grid.x, xl)
@@ -294,6 +305,8 @@ class User():
             yield from bps.mv(self.grid.y, start['y'])
 
         daq.end_run()
+
+        self._shutters[6].open()
 
 
     def xy_fly_scan(self, nshots, nrows=2, y_distance=None, rate=5,
@@ -365,6 +378,10 @@ class User():
         # Estimate distance to move given requested shots and rate
         dist = (nshots/rate)*vel  # (shots/(shots/sec))*mm/s = mm
 
+        # Close shutter 6 (requested)
+        self._shutters[6].close()
+        time.sleep(5)
+
         for i in range(nrows):
             if i != 0:
                 yield from bps.mvr(self.grid.y, y_distance)
@@ -385,3 +402,6 @@ class User():
         yield from bps.mv(self.grid.y, start['y'])
 
         daq.end_run()
+
+        self._shutters[6].open()
+
