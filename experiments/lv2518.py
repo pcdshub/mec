@@ -1,6 +1,5 @@
-import logging
-import bluesky.plan_stubs as bps
 from bluesky.plans import count, scan, list_scan
+import bluesky.plan_stubs as bps
 import time
 
 from pcdsdaq.preprocessors import daq_during_decorator
@@ -20,6 +19,7 @@ from mec.laser import FemtoSecondLaser, NanoSecondLaser
 
 from pcdsdevices.targets import XYTargetGrid
 
+import logging 
 logger = logging.getLogger(__name__)
 
 tx_motor = target.x
@@ -28,7 +28,7 @@ ty_motor = target.y
 class User():
 
     grid = XYTargetGrid(x=tx_motor, y=ty_motor, x_init=0.0, y_init=0.0,
-                        x_spacing=0.3, y_spacing=0.3, x_comp=0.01, y_comp=0.01,
+                        x_spacing=-0.363, y_spacing=0.363, x_comp=0.01, y_comp=0.01,
                         name='lv25_targetgrid')
 
     _seq = Sequence()
@@ -79,7 +79,7 @@ class User():
 
         print("Configuring DAQ...")
         daq.configure(events=0, record=record) # run infinitely
-        daq.begin_infinite()
+#        daq.begin_infinite()
         
         print("Configuring sequencer...")
         # Setup the pulse picker for single shots in flip flop mode
@@ -254,7 +254,7 @@ class User():
 
         print("Configuring DAQ...")
         daq.configure(events=0, record=record) # run infinitely
-        daq.begin_infinite()
+#        daq.begin_infinite()
 
         print("Configuring sequencer...")
         # Setup the pulse picker for single shots in flip flop mode
@@ -286,6 +286,7 @@ class User():
             yield from list_scan([daq, seq], self.grid.y, yl, self.grid.x, xl)
 
         yield from inner()
+
         if carriage_return:
             # Return to start
             print("Returning to starting position")
@@ -294,139 +295,93 @@ class User():
 
         daq.end_run()
 
-#    def _1D_fly_scan(self, motor, start, end, nevents, record, use_l3t,
-#                     controls, end_run, carriage_return, predelay, postdelay,
-#                     rate):
-#
-#        """Plan for setting up a one-dimensional fly scan."""
-#
-#        logging.debug("Generating 1D fly scan shot plan using _1D_fly_scan.")
-#        logging.debug("_shot_plan config:")
-#        logging.debug("{}".format(self._config))
-#        logging.debug("motor: {}".format(motor))
-#        logging.debug("start: {}".format(start))
-#        logging.debug("end: {}".format(end))
-#        logging.debug("predelay: {}".format(predelay))
-#        logging.debug("postdelay: {}".format(postdelay))
-#        logging.debug("Record: {}".format(record))
-#        logging.debug("use_l3t: {}".format(use_l3t))
-#        logging.debug("controls: {}".format(controls))
-#        logging.debug("carriage_return: {}".format(carriage_return))
-#        logging.debug("end_run: {}".format(end_run))
-#        logging.debug("rate: {}".format())
-#
-#        # Adjust start/end for any pre/post-delays
-#        if bool(predelay):
-#            if (end-start) >= 0:
-#                start -= predelay
-#            else:
-#                start += predelay
-#
-#        if bool(postdelay):
-#            if (end-start) >= 0:
-#                end += postdelay
-#            else:
-#                end -= postdelay
-#
-#        m_velo = motor.velocity.get()
-#        # Total number of events: (mm/(mm/s))*(events/s) = events
-#        nevents = int((abs(end-start)/m_velo)*rate)
-#
-#        # Get into initial position
-#        yield from bps.mv(motor, start)
-#
-#        motor.mv(end)
-#        # Shoot stuff
-#        yield from self._single_shot_plan(record=record, use_l3t=use_l3t,
-#                                          controls=controls, end_run=end_run)
-#
-#        if carriage_return:
-#            yield from bps.mv(motor, start)
-#        if end_run:
-#            daq.end_run()
-#
-#    def fly_scan_1D_shot(self, motor, start, end, record=True, use_l3t=False,
-#                         controls=[], end_run=True, carriage_return=True,
-#                         predelay=None, postdelay=None):
-#        """Return a plan for doing a 1D fly scan with the laser, continuously
-#        taking shots along the way."""
-#        dev = []
-#        for shutter in self._config['shutters']:
-#            dev.append(self._shutters[shutter])
-#
-#        @bpp.stage_decorator(dev)
-#        @bpp.run_decorator()
-#        def inner(motor, start, end, record, use_l3t, controls, end_run,
-#                  carriage_return, predelay, postdelay):
-#
-#            plan = self._1D_fly_scan(motor, start, end, record,
-#                                     use_l3t, controls, end_run,
-#                                     carriage_return, predelay, postdelay)
-#
-#            return plan
-#
-#        return inner(motor, start, end, record, use_l3t, controls, end_run,
-#                     carriage_return, predelay, postdelay)
-#
-#    def _2D_fly_scan_plan(self, motor1, m1_start, m1_end, motor2, m2_start,
-#                          m2_end, m2_steps, predelay, postdelay, record,
-#                          use_l3t, controls, end_run, carriage_return):
-#        # Log stuff
-#        logging.debug("Returning _2D_fly_scan with the following parameters:")
-#        logging.debug("m1_start: {}".format(m1_start))
-#        logging.debug("m1_end: {}".format(m1_end))
-#        logging.debug("m2_start: {}".format(m2_start))
-#        logging.debug("m2_end: {}".format(m2_end))
-#        logging.debug("m2_steps: {}".format(m2_steps))
-#        logging.debug("end_run: {}".format(end_run))
-#        logging.debug("carriage_return: {}".format(carriage_return))
-#
-#        m2_step_size = (m2_end-m2_start)/(m2_steps-1)
-#        logging.debug("m2 step size: {}".format(m2_step_size))
-#        for i in range(m2_steps):
-#            new_m2 = m2_start+m2_step_size*i
-#            logging.debug("Moving motor2 to {}".format(new_m2))
-#            yield from bps.mv(motor2, new_m2)
-#            logging.debug("Calling self._1D_fly_scan...")
-#            yield from self._1D_fly_scan(motor1, m1_start, m1_end, record,
-#                                         use_l3t, controls, False,
-#                                         carriage_return, predelay, postdelay)
-#            #yield from self._single_shot_plan(record, use_l3t, controls,
-#            #                                   False)
-#            # Last move in the scan, so check cleanup settings
-#            #if j == (m2_steps-1):
-#        if carriage_return:
-#            yield from bps.mv(motor1, m1_start)
-#            yield from bps.mv(motor2, m2_start)
-#        if end_run:
-#            daq.end_run()
-#
-#    def fly_scan_2D_shot(self, motor1, m1_start, m1_end, motor2, m2_start,
-#                         m2_end, m2_steps, predelay=None, postdelay=None,
-#                         record=True, use_l3t=False, controls=[], end_run=True,
-#                         carriage_return=True):
-#        """Return a plan for doing a 2D fly scan with the laser, continuously
-#        taking shots along the way."""
-#
-#        dev = []
-#        for shutter in self._config['shutters']:
-#            dev.append(self._shutters[shutter])
-#
-#        @bpp.stage_decorator(dev)
-#        @bpp.run_decorator()
-#        def inner(motor1, m1_start, m1_end, motor2, m2_start, m2_end, m2_steps,
-#                  predelay, postdelay, record, use_l3t, controls, end_run,
-#                  carriage_return):
-#
-#            plan = self._2D_fly_scan_plan(motor1, m1_start, m1_end, motor2,
-#                                          m2_start, m2_end, m2_steps, predelay,
-#                                          postdelay, record, use_l3t, controls,
-#                                          end_run, carriage_return)
-#
-#            return plan
-#
-#        return inner(motor1, m1_start, m1_end, motor2, m2_start, m2_end,
-#                     m2_steps, predelay, postdelay, record, use_l3t, controls,
-#                     end_run, carriage_return)
-#
-#
+
+    def xy_fly_scan(self, nshots, nrows=2, y_distance=None, rate=5,
+                    record=True, xrays=True):
+        """
+        Plan for doing a 2D fly scan. Uses the target x motor as the flying
+        axis, running for a specified distance at a specified velocity, taking
+        shots at a specified rate. 
+
+        Parameters
+        ----------
+        nshots : int
+            The number of shots to take in the x scan. 
+
+        rate : int <default : 5>
+            The rate at which to take shots (120, 30, 10, 5, 1)
+
+        y_distance : float <default : x.grid.y_spacing>
+            The distance to move the y stage down. 
+
+        nrows : int <default : 2>
+            The number of "rows" to scan the x stage on.
+
+        record : bool <default : True>
+            Flag to record the data. 
+
+        xrays : bool <default : True>
+            Flag to take an x-ray + optical (True) shot or optical only (False).
+        """
+        logging.debug("rate: {}".format(rate))
+        logging.debug("nshots: {}".format(nshots))
+        logging.debug("nrows: {}".format(nrows))
+        logging.debug("record: {}".format(record))
+        logging.debug("xrays: {}".format(xrays))
+
+        if not y_distance:
+            y_distance = self.grid.y_spacing
+        logging.debug("y_distance: {}".format(y_distance))
+
+        assert rate in [120, 30, 10, 5, 1], "Please choose a rate in {120, 30, 10,5,1}"
+
+        print("Configuring DAQ...")
+        daq.configure(events=0, record=record) # run infinitely
+        daq.begin_infinite()
+
+        print("Configuring sequencer...")
+        # Setup the pulse picker for single shots in flip flop mode
+        pp.flipflop(wait=True)
+        # Setup sequencer for requested rate
+        sync_mark = int(self._sync_markers[rate])
+        seq.sync_marker.put(sync_mark)
+        seq.play_mode.put(1) # Run for n shots
+        seq.rep_count.put(nshots)
+        # Setup sequence
+        self._seq.rate = rate
+        if xrays:
+            s = self._seq.duringSequence(1, 'shortpulse')
+        else:
+            s = self._seq.opticalSequence(1, 'shortpulse')
+        seq.sequence.put_seq(s)
+
+        # Get starting positions
+        start = self.grid.wm()
+
+        # Calculate and set velocity
+        vel = self.grid.x_spacing * rate  # mm * (1/s) = mm/s
+        self.grid.x.velocity.put(vel)
+
+        # Estimate distance to move given requested shots and rate
+        dist = (nshots/rate)*vel  # (shots/(shots/sec))*mm/s = mm
+
+        for i in range(nrows):
+            if i != 0:
+                yield from bps.mvr(self.grid.y, y_distance)
+            # Play the sequencer
+            seq.play_control.put(1) 
+            
+            # Start the move
+            yield from bps.mvr(self.grid.x, dist) # Waits for move to complete
+
+            # Make sure the sequencer stopped
+            seq.play_control.put(0) 
+
+            yield from bps.mv(self.grid.x, start['x'])
+
+        # Return to start
+        print("Returning to starting position")
+        yield from bps.mv(self.grid.x, start['x'])
+        yield from bps.mv(self.grid.y, start['y'])
+
+        daq.end_run()
