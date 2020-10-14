@@ -93,7 +93,7 @@ class FSTiming(object):
         newval = t0 - (val * 1e9) 
         self._channel.control_PV.put(newval)
         if tt_comp:
-            d = self._calc_tt_comp(newval) # Relative or absolute here?
+            d = self._calc_tt_comp(newval)
             self._tt_motor.mvr(d)
 
     def get_delay(self, verbose=False):
