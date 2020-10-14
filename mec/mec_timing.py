@@ -55,7 +55,7 @@ class TimingChannel(object):
 class FSTiming(object):
     def __init__(self):
         self._channel = TimingChannel('LAS:FS6:VIT:FS_TGT_TIME', 'MEC:NOTE:LAS:FST0', 'FSTiming')
-        sefl._tt_motor = Motor('MEC:LAS:MMN:19', name='tt_comp_motor')
+        self._tt_motor = Motor('MEC:LAS:MMN:19', name='tt_comp_motor')
 
     def _calc_tt_comp(self, t):
         """
@@ -73,7 +73,7 @@ class FSTiming(object):
         Motor moving in the negative direction compensates for a positive
         change in arrival time.
         """
-        d = (t*2.99792458e8*1.0e3))/2 # in mm
+        d = (t*2.99792458e8*1.0e3)/2 # in mm
 
         return d
 
