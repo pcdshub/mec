@@ -1,5 +1,10 @@
 from ophyd import (Device, EpicsSignal, EpicsSignalRO, Component as C,
                    FormattedComponent as FC)
+from pcdsdevices.interface import FltMvInterface
+from pcdsdevices.pv_positioner import PVPositionerComparator
+from ophyd.epics_motor import EpicsMotor
+from ophyd.positioner import PositionerBase
+from ophyd.pv_positioner import PVPositioner
 from pcdsdevices import epics_motor
 import time
 
@@ -69,36 +74,45 @@ class LedLights(Device):
         else:
             return False
 
-class M824_Axis(Device):
+# The PI hexapod status PV is not very reliable, I implemented this as a
+# PVPositionerComparator class to get scans to run properly; my first attempt
+# using a PVPositioner would just hang using a normal PVPositioner object since 
+# done wasn't getting updated properly. This object does have an issue with
+# hanging when the position is commanded outside the limits; there are no limit 
+# switches to indicate that a limit has been reached. The limits are set in the
+# combined hexapod parent class, but currently PVPositioner doesn't do anything
+# with the limits, and these limits may need to be modified depending on 
+# experiment configuration, since the limits are dependent upon current 
+# physical position. 
+class M824_Axis(PVPositionerComparator):
     """Axis subclass for PI_M824_Hexapod class."""
-    
-    axis = C(EpicsSignal, '')
-    axis_rbv = C(EpicsSignal, ':rbv')
+    setpoint = C(EpicsSignal, '')
+    readback = C(EpicsSignal, ':rbv')
+    atol = 0.001 # one micron seems close enough
 
-    def mv(self, pos):
-        """Absolute move to specified position."""
-        self.axis.put(pos)
+    def done_comparator(self, readback, setpoint):
+        if setpoint-self.atol < readback and readback < setpoint+self.atol:
+            return True
+        else:
+            return False
     
-    def mvr(self, inc):
-        """Move relative distance."""
-        curr_pos = self.axis_rbv.get()
-        next_pos = curr_pos + inc
-        self.axis.put(next_pos)
-
-    def wm(self):
-        """Return current axis position (where motor)."""
-        curr_pos = self.axis_rbv.get()
-        return curr_pos
         
 class PI_M824_Hexapod(Device):
     """Class for the main MEC TC hexapod. Model M-824 from PI."""
-    # Setup axes
-    x = C(M824_Axis, ':Xpr')
-    y = C(M824_Axis, ':Ypr')
-    z = C(M824_Axis, ':Zpr')
-    u = C(M824_Axis, ':Upr')
-    v = C(M824_Axis, ':Vpr')
-    w = C(M824_Axis, ':Wpr')
+
+    def __init__(self, prefix, **kwargs):
+        # Setup axes
+        self.x = M824_Axis(prefix+':Xpr', name='x', limits=(-22.5, 22.5))
+        # Hexapod "Z", LUSI "Y"
+        self.y = M824_Axis(prefix+':Ypr', name='y', limits=(-12.5, 12.5))
+        # Hexapod "Y", LUSI "Z"
+        self.z = M824_Axis(prefix+':Zpr', name='z', limits=(-22.5, 22.5))
+        self.u = M824_Axis(prefix+':Upr', name='u', limits=(-7.5, 7.5))
+        # Hexapod "Z", LUSI "Y"
+        self.v = M824_Axis(prefix+':Vpr', name='v', limits=(-12.5, 12.5))
+        # Hexapod "Y", LUSI "Z"
+        self.w = M824_Axis(prefix+':Wpr', name='w', limits=(-7.5, 7.5))
+        super().__init__(prefix, **kwargs)
 
     # Setup controller level properties
     moving_rbk = C(EpicsSignal, ':moving.RVAL')
@@ -139,6 +153,8 @@ class PI_M824_Hexapod(Device):
             return False
 
 
+# This should be removed at some point; it has been superceded by a class in
+# pcdsdevices. Leaving it in for now.
 class TargetStage(Device):
     """Class for MEC target stage. Composite stage consisting of hexapod and
     a linear stage. Linear stage is used for rastering targets in X, while 
