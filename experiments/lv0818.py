@@ -17,7 +17,7 @@ from mec.db import target
 from mec.sequence import Sequence
 from mec.laser import FemtoSecondLaser, NanoSecondLaser
 
-from dev.pulseshaping.mecps import pspreshot, pspostshot
+from dev.pulseshaping.mecps.mecps import pspreshot, pspostshot
 
 import logging 
 logger = logging.getLogger(__name__)
