@@ -82,6 +82,28 @@ class User():
                  5: shutter5,
                  6: shutter6}
 
+    seq_a_pvs = [EpicsSignal('MEC:ECS:IOC:01:EC_6:00'),
+                 EpicsSignal('MEC:ECS:IOC:01:EC_6:01'),
+                 EpicsSignal('MEC:ECS:IOC:01:EC_6:02'),
+                 EpicsSignal('MEC:ECS:IOC:01:EC_6:03'),
+                 EpicsSignal('MEC:ECS:IOC:01:EC_6:04'),
+                 EpicsSignal('MEC:ECS:IOC:01:EC_6:05'),
+                 EpicsSignal('MEC:ECS:IOC:01:EC_6:06'),
+                 EpicsSignal('MEC:ECS:IOC:01:EC_6:07'),
+                 EpicsSignal('MEC:ECS:IOC:01:EC_6:08'),
+                 EpicsSignal('MEC:ECS:IOC:01:EC_6:09')]
+
+    seq_b_pvs = [EpicsSignal('MEC:ECS:IOC:01:BD_6:00'),
+                 EpicsSignal('MEC:ECS:IOC:01:BD_6:01'),
+                 EpicsSignal('MEC:ECS:IOC:01:BD_6:02'),
+                 EpicsSignal('MEC:ECS:IOC:01:BD_6:03'),
+                 EpicsSignal('MEC:ECS:IOC:01:BD_6:04'),
+                 EpicsSignal('MEC:ECS:IOC:01:BD_6:05'),
+                 EpicsSignal('MEC:ECS:IOC:01:BD_6:06'),
+                 EpicsSignal('MEC:ECS:IOC:01:BD_6:07'),
+                 EpicsSignal('MEC:ECS:IOC:01:BD_6:08'),
+                 EpicsSignal('MEC:ECS:IOC:01:BD_6:09')]
+
     def open_shutters(self):
         print("Opening shutters...")
         for shutter in self.shutters:
@@ -93,6 +115,19 @@ class User():
         for shutter in self.shutters:
             self._shutters[shutter].close()
         time.sleep(5)
+
+    def seq_wait(self):
+        time.sleep(0.5)
+        while seq.play_status.get() != 0:
+            time.sleep(0.5)
+
+    def scalar_sequence_write(self, s):
+        for i in range(len(s)):
+            self.seq_a_pvs[i].put(s[i][0])
+        for j in range(len(s)):
+            self.seq_b_pvs[j].put(s[j][1])
+
+        seq.sequence_length.put(len(s))
 
     def uxi_shot(self, delta=0.3, record=True, lasps=True):
         """
@@ -124,14 +159,23 @@ class User():
             Flag to perform pre-and post shot pulse shaping routines. 
         """
         logging.debug("Calling User.shot with parameters:")
-        logging.debug("prex: {}".format(prex))        
-        logging.debug("postx: {}".format(postx))        
+        logging.debug("delta: {}".format(delta))        
         logging.debug("record: {}".format(record))        
         logging.debug("lasps: {}".format(lasps))        
 
         print("Configuring DAQ...")
-        daq.configure(events=0, record=record) # run infinitely, let sequencer
+#        yield from bps.configure(daq,events=0, record=record) # run infinitely, let sequencer
                                                # control number of events
+        daq.begin_infinite(record=record)
+
+        long_seq = [[0, 240, 0, 0],
+                    [0, 0, 0, 0],
+                    [0, 0, 0, 0],
+                    [0, 0, 0, 0],
+                    [0, 0, 0, 0],
+                    [0, 0, 0, 0],
+                    [0, 0, 0, 0],
+                    [0, 0, 0, 0]]
         
         print("Configuring sequencer...")
         # Setup the pulse picker for single shots in flip flop mode
@@ -140,7 +184,7 @@ class User():
         sync_mark = int(self._sync_markers[0.5])
         seq.sync_marker.put(sync_mark)
         seq.play_mode.put(1) # Run N times
-        seq.play_count.put(10) 
+        seq.rep_count.put(10) 
         # Setup sequence
         self._seq.rate = 0.5
 
@@ -156,17 +200,25 @@ class User():
 
         # Run 10 Pre-laser dark shots (step 1 above)
         s = self._seq.darkSequence(1, preshot=False)
-        seq.sequence.put_seq(s)
-        seq.sequence.put_seq(s) # Try double .put() to fix sequencer bug
+#        seq.sequence.put_seq(long_seq)
+#        seq.sequence.put_seq(s)
+        self.scalar_sequence_write(s)
         print("Taking 10 dark shots...")
-        yield from bps.trigger_and_read([daq, seq])
+        time.sleep(1)
+        seq.start()
+        self.seq_wait()
+ #       yield from bps.trigger_and_read([daq, seq])
 
         # Run 10 Pre-laser x-ray shots (step 2 above)
         s = self._seq.darkXraySequence(1, preshot=False)
-        seq.sequence.put_seq(s)
-        seq.sequence.put_seq(s) # Try double .put() to fix sequencer bug
+#        seq.sequence.put_seq(long_seq)
+#        seq.sequence.put_seq(s)
+        self.scalar_sequence_write(s)
         print("Taking 10 x-ray shots...")
-        yield from bps.trigger_and_read([daq, seq])
+        time.sleep(1)
+        seq.start()
+        self.seq_wait()
+        #yield from bps.trigger_and_read([daq, seq])
         
         # Move sample in (step 3 above)
         print("Moving sample in...")
@@ -175,25 +227,37 @@ class User():
         # Run 10 Pre-laser dark shots (step 4 above)
         print("Taking 10 dark shots...")
         s = self._seq.darkSequence(1, preshot=False)
-        seq.sequence.put_seq(s)
-        seq.sequence.put_seq(s) # Try double .put() to fix sequencer bug
-        yield from bps.trigger_and_read([daq, seq])
+#        seq.sequence.put_seq(long_seq)
+#        seq.sequence.put_seq(s)
+        self.scalar_sequence_write(s)
+        time.sleep(1)
+        seq.start()
+        self.seq_wait()
+ #       yield from bps.trigger_and_read([daq, seq])
 
         # Run x-ray + optical sequence (step 5 above)
         print("Taking optical laser shots...")
-        seq.play_count.put(1) 
+        seq.rep_count.put(1) 
         s = self._seq.duringSequence(1, 'longpulse')
-        seq.sequence.put_seq(s)
-        seq.sequence.put_seq(s) # Try double .put() to fix sequencer bug
-        yield from bps.trigger_and_read([daq, seq])
+#        seq.sequence.put_seq(long_seq)
+#        seq.sequence.put_seq(s)
+        self.scalar_sequence_write(s)
+        time.sleep(1)
+        seq.start()
+        self.seq_wait()
+ #       yield from bps.trigger_and_read([daq, seq])
 
         # Run 10 Post-laser dark shots (step 6 above)
         print("Taking 10 dark shots...")
-        seq.play_count.put(10) 
+        seq.rep_count.put(10) 
         s = self._seq.darkSequence(1, preshot=False)
-        seq.sequence.put_seq(s)
-        seq.sequence.put_seq(s) # Try double .put() to fix sequencer bug
-        yield from bps.trigger_and_read([daq, seq])
+#        seq.sequence.put_seq(long_seq)
+#        seq.sequence.put_seq(s)
+        self.scalar_sequence_write(s)
+        time.sleep(1)
+        seq.start()
+        self.seq_wait()
+ #       yield from bps.trigger_and_read([daq, seq])
 
         # Move sample out (step 7 above)
         print("Moving sample out...")
@@ -201,18 +265,26 @@ class User():
 
         # Run 10 Pre-x-ray dark shots (step 8 above)
         print("Taking 10 dark shots...")
-        seq.play_count.put(10) 
+        seq.rep_count.put(10) 
         s = self._seq.darkSequence(1, preshot=False)
-        seq.sequence.put_seq(s)
-        seq.sequence.put_seq(s) # Try double .put() to fix sequencer bug
-        yield from bps.trigger_and_read([daq, seq])
+#        seq.sequence.put_seq(long_seq)
+#        seq.sequence.put_seq(s)
+        self.scalar_sequence_write(s)
+        time.sleep(1)
+        seq.start()
+        self.seq_wait()
+ #       yield from bps.trigger_and_read([daq, seq])
 
         # Run 10 Pre-laser x-ray shots (step 9 above)
         print("Taking 10 x-ray shots...")
         s = self._seq.darkXraySequence(1, preshot=False)
-        seq.sequence.put_seq(s)
-        seq.sequence.put_seq(s) # Try double .put() to fix sequencer bug
-        yield from bps.trigger_and_read([daq, seq])
+#        seq.sequence.put_seq(long_seq)
+#        seq.sequence.put_seq(s)
+        self.scalar_sequence_write(s)
+        time.sleep(1)
+        seq.start()
+        self.seq_wait()
+ #       yield from bps.trigger_and_read([daq, seq])
 
         daq.end_run()
 
