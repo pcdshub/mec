@@ -9,12 +9,13 @@ import logging
 from bluesky.plans import count
 import bluesky.plan_stubs as bps
 import bluesky.preprocessors as bpp
-from mec.db import seq, daq
+from mec.db import daq, seq
 from mec.db import shutter1, shutter2, shutter3, shutter4, shutter5, shutter6
 from mec.db import mec_pulsepicker as pp
 from .sequence import Sequence
 
 logger = logging.getLogger(__name__)
+
 
 class Laser():
     """Base class for the MEC laser systems."""

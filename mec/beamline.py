@@ -195,3 +195,11 @@ with safe_load('SPL Modes'):
         print("Laser is in target mode. Single shot only!!!.")
         print("Don't forget to use the --prelasertrig 24 option in the script!!")
         print("Remember to change to alignment mode before aligning.")
+
+#with safe_load('MEC Nanosecond Laser'):
+#    from mec.laser import NanoSecondLaser
+#    nsl = NanoSecondLaser()
+#
+#with safe_load('MEC Femtosecond Laser'):
+#    from mec.laser import FemtoSecondLaser
+#    fsl = FemtoSecondLaser()

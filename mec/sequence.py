@@ -114,7 +114,7 @@ class Sequence:
         self.prelasertrig = int(PreLaserTrig)
         self.slowcam = SlowCam
         self.slowcamdelay = SlowCamDelay
-        self.rate = int(Rate)
+        self.rate = Rate
 
 
     def darkSequence(self, nshots, preshot=True):
