@@ -17,7 +17,7 @@ from mec.db import target
 from mec.sequence import Sequence
 from mec.laser import FemtoSecondLaser, NanoSecondLaser
 
-from dev.pulseshaping.mecps.mecps import pspreshot, pspostshot
+from dev.pulseshaping.mecps.mecps import *
 
 import logging 
 logger = logging.getLogger(__name__)
@@ -25,6 +25,12 @@ logger = logging.getLogger(__name__)
 class User():
 
     target_x = Motor('MEC:USR:MMS:17', name='target_x_motor')
+
+    YFEon = YFEon
+    YFEoff = YFEoff
+    HWPon = HWPon
+    SHG_opt = SHG_opt
+    save_scope_to_eLog = save_scope_to_eLog
 
     def start_seq(self, rate=120, wLPLaser=False):
         if rate==120:
