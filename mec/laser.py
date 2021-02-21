@@ -14,6 +14,8 @@ from mec.db import shutter1, shutter2, shutter3, shutter4, shutter5, shutter6
 from mec.db import mec_pulsepicker as pp
 from .sequence import Sequence
 
+from mecps import *
+
 logger = logging.getLogger(__name__)
 
 
@@ -343,14 +345,16 @@ class Laser():
 
         print("Configured for {} total shots.".format(total_shots))
         logging.debug("Total shots: {}".format(total_shots))
-    
-        yield from bps.configure(daq, events=0, begin_sleep=2, record=record, use_l3t=use_l3t, controls=controls)
 
         # Add sequencer, DAQ to detectors for shots
         dets = [daq, seq]
 
         for det in dets:
-            yield from bps.stage(det)
+            # staging the daq auto calls end_run
+            if det is not daq or end_run:
+                yield from bps.stage(det)
+    
+        yield from bps.configure(daq, events=0, begin_sleep=15, record=record, use_l3t=use_l3t, controls=controls)
 
         # Check for slow cameras, stage if requested
         if self._config['slowcam']:
@@ -373,6 +377,7 @@ class Laser():
             shots = self._config['predark']
             logging.debug("Configuring for {} predark shots".format(shots))
 #            yield from bps.configure(daq, events=shots)
+            daq._config['events'] = shots
 
             # Preshot dark, so use preshot laser marker
             pre_dark_seq = self._seq.darkSequence(shots, preshot=True)
@@ -388,6 +393,7 @@ class Laser():
             shots = self._config['prex']
             logging.debug("Configuring for {} prex shots".format(shots))
 #            yield from bps.configure(daq, events=shots)
+            daq._config['events'] = shots
 
             # Preshot x-ray only shots, so use preshot laser marker
             prex_seq = self._seq.darkXraySequence(shots, preshot=True)
@@ -403,6 +409,7 @@ class Laser():
             shots = self._config['preo']
             logging.debug("Configuring for {} preo shots".format(shots))
 #            yield from bps.configure(daq, events=shots)
+            daq._config['events'] = shots
 
             # Optical only shot, with defined laser
             preo_seq = self._seq.opticalSequence(shots, self._config['laser'],\
@@ -419,6 +426,7 @@ class Laser():
             shots = self._config['during']
             logging.debug("Configuring for {} during shots".format(shots))
 #            yield from bps.configure(daq, events=shots)
+            daq._config['events'] = shots
 
             # During shot, with defined laser
             during_seq = self._seq.duringSequence(shots, self._config['laser'])
@@ -434,6 +442,7 @@ class Laser():
             shots = self._config['posto']
             logging.debug("Configuring for {} posto shots".format(shots))
 #            yield from bps.configure(daq, events=shots)
+            daq._config['events'] = shots
 
             # Optical only shot, with defined laser
             posto_seq = self._seq.opticalSequence(shots, self._config['laser'],\
@@ -450,6 +459,7 @@ class Laser():
             shots = self._config['postx']
             logging.debug("Configuring for {} postx shots".format(shots))
 #            yield from bps.configure(daq, events=shots)
+            daq._config['events'] = shots
 
             # Postshot x-ray only shots, so use postshot laser marker
             postx_seq = self._seq.darkXraySequence(shots, preshot=False)
@@ -465,6 +475,7 @@ class Laser():
             shots = self._config['postdark']
             logging.debug("Configuring for {} postdark shots".format(shots))
 #            yield from bps.configure(daq, events=shots)
+            daq._config['events'] = shots
 
             # Postshot dark, so use postshot laser marker
             post_dark_seq = self._seq.darkSequence(shots, preshot=False)
@@ -476,10 +487,9 @@ class Laser():
 
         
         for det in dets:
-            yield from bps.unstage(det)
-
-        if end_run:
-            daq.end_run()
+            # unstaging the daq ends the run
+            if det is not daq or end_run:
+                yield from bps.unstage(det)
 
     def shot(self, record=True, use_l3t=False, controls=[], end_run=True):
         """Return a plan for executing a laser shot (or shots), based on the 
@@ -551,6 +561,63 @@ class NanoSecondLaser(Laser):
         #TODO
         raise NotImplementedError("This method is not implemented yet!")
 
+    def shot(self, record=True, use_l3t=False, controls=[], end_run=True, ps=False):
+        """Return a plan for executing a laser shot (or shots), based on the 
+        current configuration of the laser. To modify the shot, update the
+        laser configuration, then call this method. This method uses the pulse
+        picker and sequencer to take XFEL + Optical laser shots. Multiple XFEL
+        and/or laser shots will be performed by setting up the sequencer for
+        a multiple shots, and running the sequence once.
+
+        laser.shot(record=True)
+
+        Parameters
+        ----------
+        record : bool
+            Select whether the run will be recorded or not. Defaults to True.
+
+        use_l3t : bool
+            Select whether the run will use a level 3 trigger or not. Defaults
+            to False.
+
+        controls : list
+            List of controls devices to include values into the DAQ data stream
+            as variables. All devices must have a name attribute. Defaults to
+            empty list.
+
+        end_run : bool
+            Select whether or not to end the run after the shot. Defaults to
+            True.
+
+        ps : bool
+            Select whether or not to run pre and post shot pulse shaping
+            routines. Default is false. 
+
+        Examples
+        --------
+        # Take a shot immediately, don't record
+
+        RE(laser.shot(record=False))
+
+        # Take a shot immediately, record
+
+        RE(laser.shot(record=True))
+
+        # Initialize the shot, record a shot at some later time when RE(p) is
+        # called. 
+
+        p = laser.shot(record=True)
+        ...
+        RE(p)
+        """
+        if ps:
+            print("Running preshot pulse shaping routine...")
+            pspreshot()
+        yield from super().shot(record=record, use_l3t=use_l3t, controls=controls, end_run=end_run)
+        if ps:
+            print("Running postshot pulse shaping routine...")
+            pspostshot()
+        
 class FemtoSecondLaser(Laser):
     """Class for the MEC femtosecond laser."""
     def __init__(self, *args, **kwargs):
