@@ -13,6 +13,6 @@ unset LD_LIBRARY_PATH
 source "${CONDA_BASE}/etc/profile.d/conda.sh"
 conda activate "${CONDA_ENVNAME}"
 HERE=`dirname $(readlink -f $0)`
-export PYTHONPATH="${HERE}:${HERE}/dev/devpath:/reg/g/pcds/pyps/apps/dev/pythonpath:${HERE}/../common/dev/devpath:${HERE}/dev/pulseshaping/mecps"
+export PYTHONPATH="${HERE}:${HERE}/dev/devpath:/reg/g/pcds/pyps/apps/dev/pythonpath:${HERE}/../common/dev/devpath:${HERE}/dev/pulseshaping/mecps:${HERE}/mec/macros"
 source pcdsdaq_lib_setup
 export CONDA_PROMPT_MODIFIER="(${HUTCH}-${CONDA_ENVNAME})"

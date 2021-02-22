@@ -61,6 +61,16 @@ pinholehy=EpicsSignal('MEC:NOTE:DOUBLE:25')
 pinholehz=EpicsSignal('MEC:NOTE:DOUBLE:26')
 pinholetgx=EpicsSignal('MEC:NOTE:DOUBLE:27')
 
+ceo2hx=EpicsSignal('MEC:NOTE:DOUBLE:28')
+ceo2hy=EpicsSignal('MEC:NOTE:DOUBLE:29')
+ceo2hz=EpicsSignal('MEC:NOTE:DOUBLE:30')
+ceo2tgx=EpicsSignal('MEC:NOTE:DOUBLE:31')
+
+lab6hx=EpicsSignal('MEC:NOTE:DOUBLE:32')
+lab6hy=EpicsSignal('MEC:NOTE:DOUBLE:33')
+lab6hz=EpicsSignal('MEC:NOTE:DOUBLE:34')
+lab6tgx=EpicsSignal('MEC:NOTE:DOUBLE:35')
+
 targetsavehx=EpicsSignal('MEC:NOTE:DOUBLE:37')
 targetsavehy=EpicsSignal('MEC:NOTE:DOUBLE:38')
 targetsavehz=EpicsSignal('MEC:NOTE:DOUBLE:39')
@@ -108,7 +118,7 @@ def xray_only(xray_trans=1, xray_num=10, save=False):
     '''
     Description: script to take xray only events.
     IN:
-        xray_trans : decimla value of the xray transmission
+        xray_trans : decimal value of the xray transmission
         xray_num   : number of x-rays to send on target
         save       : True to save to the DAQ, False otherwise
     OUT:
@@ -126,6 +136,39 @@ def xray_only(xray_trans=1, xray_num=10, save=False):
     msg = '{} x-ray only shots at {:.1f}% {}'.format(xray_num, 100.0 * xray_trans, msg_log_target)
     mecl.post(msg, run=RunNumber, tags=['xray'])
 
+# method to perform XRD calibration by moving to the appropriate target and save a daq run
+def xray_calib(xray_trans=0.01, xray_num=10, calibrant='CeO2', save=False):
+    '''
+    Description: script to take xray only events performing an XRD calibration on calib target.
+    IN:
+        xray_trans : decimal value of the xray transmission
+        xray_num   : number of x-rays to send on target
+        calibrant  : values are 'CeO2', 'LaB6', 'Ti'
+        save       : True to save to the DAQ, False otherwise
+    OUT:
+        execute the plan
+    '''
+    # start by moving on target
+    if ((calibrant == 'CeO2') or (calibrant == 'ceo2')):
+        ceo2()
+        msg_calib_target = 'on CeO2'
+    if ((calibrant == 'LaB6') or (calibrant == 'lab6')):
+        lab6()
+        msg_calib_target = 'on LaB6'
+    if ((calibrant == 'Ti') or (calibrant == 'ti')):
+        ti()
+        msg_calib_target = 'on Ti'
+    x.nsl.predark=1
+    x.nsl.prex=xray_num
+    x.nsl.during=0
+    SiT(xray_trans)
+    p=x.nsl.shot(record=save)
+    RE(p)
+    ExpName = get_curr_exp()
+    RunNumber = get_run_number(hutch='mec', timeout=10)
+    mecl = elog.ELog({'experiment':ExpName}, user='mecopr', pw=pickle.load(open('/reg/neh/operator/mecopr/mecpython/pulseshaping/elogauth.p', 'rb')))
+    msg = '{} x-ray only shots at {:.1f}% {}'.format(xray_num, 100.0 * xray_trans, msg_calib_target)
+    mecl.post(msg, run=RunNumber, tags=['xray', 'calibration', calibrant])
 
 # method to perform a pump-probe LPL shot
 def optical_shot(lpl_ener=1.0, timing=0.0e-9, xray_trans=1, msg='', tags_words=['optical', 'sample'], auto_trig=False, auto_charge=False):
@@ -246,6 +289,34 @@ def pinhole_s():
     pinholehx.put(hexx.get())
     pinholehy.put(hexy.get())
     pinholehz.put(hexz.get())
+
+def ceo2():
+    """ move to the CeO2 calibrant. Uses the User pvs."""
+    tgx.mv(ceo2tgx.get())
+    hexx.put(ceo2hx.get())
+    hexy.put(ceo2hy.get())
+    hexz.put(ceo2hz.get())
+
+def ceo2_s():
+    """ saves current position in CeO2 user pv. Uses the User pvs."""
+    ceo2tgx.put(tgx())
+    ceo2hx.put(hexx.get())
+    ceo2hy.put(hexy.get())
+    ceo2hz.put(hexz.get())
+
+def lab6():
+    """ move to the LaB6 calibrant. Uses the User pvs."""
+    tgx.mv(lab6tgx.get())
+    hexx.put(lab6hx.get())
+    hexy.put(lab6hy.get())
+    hexz.put(lab6hz.get())
+
+def lab6_s():
+    """ saves current position in LaB6 user pv. Uses the User pvs."""
+    lab6tgx.put(tgx())
+    lab6hx.put(hexx.get())
+    lab6hy.put(hexy.get())
+    lab6hz.put(hexz.get())
 
 def ti():
     """ move to the ti sample. Uses the User pvs."""
