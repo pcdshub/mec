@@ -1,17 +1,14 @@
 import time
 import numpy as np
-# used to color the output text
-from colorama import init, Fore, Back, Style
-
 from datetime import datetime
 import matplotlib.pyplot as plt
 #from mec.laser import NanoSecondLaser
-import logging
-from functools import partial
+#import logging
 
 #import elog
 #import pickle
 from mecps import *
+
 from pcdsdevices.epics_motor import Motor
 
 from mec.db import *
@@ -29,15 +26,7 @@ from mec.visar_bed import *
 
 from ophyd import EpicsSignal 
 
-# force color rest at the end of any print statement
-init(autoreset = True)
-
-# logging declaration copy/paste from the utils.py file in hutch-python. Will add new definition though
-SUCCESS_LEVEL = 35
-logging.addLevelName('SUCCESS', SUCCESS_LEVEL)
-logger = logging.getLogger(__name__)
-logger.success = partial(logger.log, SUCCESS_LEVEL)
-
+#logger = logging.getLogger(__name__)
 
 talbot_x=Motor('MEC:PPL:MMN:21', name='talbot_x')
 
@@ -61,18 +50,6 @@ tg_imaging_z=Motor('MEC:TC1:MMS:22', name='tg_imaging_z')
 delay_line=Motor('MEC:USR:MMS:25', name='delay_line')
 pp=EpicsSignal('MEC:HXM:MMS:18:SET_SE')
 be_lens_stack=EpicsSignal("MEC:XT2:XFLS.VAL")
-
-# GMD PV values for the FEL pulse energy
-gmd_241 = EpicsSignal('GDET:FEE1:242:ENRC')
-gmd_242 = EpicsSignal('GDET:FEE1:242:ENRC')
-gmd_361 = EpicsSignal('GDET:FEE1:242:ENRC')
-gmd_362 = EpicsSignal('GDET:FEE1:242:ENRC')
-
-# Be lens vertical readback value
-be_y = EpicsSignal('MEC:XT2:MMS:15.RBV')
-be_y_preset1 = EpicsSignal('MEC:XT2:XFLS:PACK1_SET')
-be_y_preset2 = EpicsSignal('MEC:XT2:XFLS:PACK2_SET')
-be_y_preset3 = EpicsSignal('MEC:XT2:XFLS:PACK3_SET')
 
 # spl timing
 spl_vitara = EpicsSignal('LAS:FS6:VIT:FS_TGT_TIME')
@@ -228,21 +205,6 @@ def load_presets():
     arr_presets = np.loadtxt('/reg/g/pcds/pyps/apps/hutch-python/mec/mec/macros/stage_presets.txt')
     return arr_presets
 
-def fel_pulse_energy():
-    '''
-    Description: Get the pulse energy being the mean value of the GMD sensors in the FEE
-    IN:
-        NONE
-    OUT:
-        float with pulse energy in mJ
-    '''
-    arr = np.zeros(4)
-    arr[0] = gmd_241.get()
-    arr[1] = gmd_242.get()
-    arr[2] = gmd_361.get()
-    arr[3] = gmd_362.get()
-    return np.mean(arr)
-
 # method to prepare for visar alignment
 def visar_mode(status = 'ready'):
     '''
@@ -251,7 +213,7 @@ def visar_mode(status = 'ready'):
 
     IN:
         status: 'ready' for laser shot (182), 'align' for alignment mode (43 and 44), 'daq' for 
-        169 used to control the VISAR in the daq, so used for both alignment and on-shot, 'move' for disabling the visar light only when ;oving from target to target
+        169 used to control the VISAR in the daq, so used for both alignment and on-shot
     OUT:
         set the EVR to the right value
     '''
@@ -265,15 +227,11 @@ def visar_mode(status = 'ready'):
     if (status == 'daq'):
         visar_streak_evt_code.put(169)
         visar_laser_evt_code.put(43)
-
     # look at the button status (enabled:1 or diabled:0)
     if (visar_streak_evr_btn.get() == 0):
         visar_streak_evr_btn.put(1)
     if (visar_laser_evr_btn.get() == 0):
         visar_laser_evr_btn.put(1)
-    if (status == 'move'):
-        visar_laser_evr_btn.put(0)
-        
 
 # set the calibrant list used on the MEC calibration cartridge
 calibrant_list = ['CeO2', 'ceo2', 'LaB6', 'lab6', 'Ti', 'ti', 'Cu', 'cu', 'Zn', 'zn']
@@ -429,38 +387,28 @@ def xray_calib(xray_trans=0.01, xray_num=10, calibrant='CeO2', rate=1, save=Fals
     # until we can easily know if the VISAR is in the DAQ, it forces the rate back to 1 Hz
     x.nsl._config['rate']=1
 
+
 # method to perform a pump-probe LPL shot
-def optical_shot(shutter_close=[1, 2, 3, 4, 5, 6], lpl_ener=1.0, timing=0.0e-9, xray_threshold=0.1, xray_trans=1, prex=0, daq_end=True, msg='', arms='all', tags_words=['optical', 'sample'], auto_trig=False, auto_charge=False, visar=True, slow_cam=False, debug=True):
+def optical_shot(shutter_close=[1, 2, 3, 4, 5, 6], lpl_ener=1.0, timing=0.0e-9, xray_trans=1, prex=0, daq_end=True, msg='', arms='all', tags_words=['optical', 'sample'], auto_trig=False, auto_charge=False, visar=True, slow_cam=False):
     '''
     Description: script to shoot the optical laser and time it with the xrays. It automatically push to the elog the laser energy, the timing and the xray SiT transmission.
     IN:
-        shutter_close   : array of shutters in front of viewport to close during laser shots
-        lpl_ener        : waveplate settings for the lpl energy, decimal value, meaning 1. = 100%, 0.5 = 50%
-        timing          : moves absolute, in s
-        xray_threshold  : threshold energy in mJ below which the shot is NOT proceeding and loop until FEL energy is back 
-        xray_trans      : X ray transmission, meaning 1. = 100%, 0.5 = 50%
-        prex            : when True, allows to take one Xray or visar reference
-        daq_end         : if True, it will allow the DAQ to keep the data on screen until daq.disconnect() is used.
-        msg             : message to post to the elog
-        arms            : all, ABGH, EFIJ are valid
-        tags_words      : accompagnying tags to the elog
-        auto_trig       : True to make sure the triggers are enabled, False otherwise (simulation test for example).False by default.
-        auto_charge     : True to charge automatically the PFN. False by default.
-        visar           : True to check that the VISAR triggers are set properly.
-        slow_cam        : Change the state of the configuration file for slow devices like cameras or gas jets
-        debug           : True to enable debugging functions
+        lpl_ener   : waveplate settings for the lpl energy, decimal value, meaning 1. = 100%, 0.5 = 50%
+        timing     : moves absolute, in s
+        xray_trans : X ray transmission, meaning 1. = 100%, 0.5 = 50%
+        msg        : message to post to the elog
+        arms       : all, ABGH, EFIJ are valid
+        tags_words : accompagnying tags to the elog
+        prex       : when True, allows to take one Xray or visar reference
+        daq_persistent: if True, it will allow the DAQ to keep the data on screen until daq.disconnect() is used.
+        auto_trig  : True to make sure the triggers are enabled, False otherwise (simulation test for example).False by default.
+        auto_charge: True to charge automatically the PFN. False by default.
+        visar      : True to check that the VISAR triggers are set properly.
     OUT:
         execute the plan and post a comment to the elog.
     '''
     # make sure the daq is not connected before starting the command
     x.nsl._config['slowcam'] = slow_cam
-    # debugging flags for various subsystems
-    if (debug == True):
-        # displays the status of the internal shutters of the optical laser to help debugging interaction issues
-        print('Start debugging functions ---')
-        TTL_shutter_status(display=True)
-        print('End debugging functions ---')
-    # force disconnect the DAQ before starting a new sequence
     if (daq.connected == True):
         daq.disconnect()
     x.nsl.configure(x.nsl._config)
@@ -509,16 +457,6 @@ def optical_shot(shutter_close=[1, 2, 3, 4, 5, 6], lpl_ener=1.0, timing=0.0e-9, 
         p=x.nsl.shot(record=True, ps=True, end_run=True)
     if (daq_end == False):
         p=x.nsl.shot(record=True, ps=True, end_run=False)
-    # loop before the shot to check that FEL pulse energy is above a threshold: if the FEL drops within 10 sec, then we cannot do much with this moethod
-    # getting the energy value once to evaluate what to do otherwise might be using a different pulse. Still might be unprecise since this is a BLD value which is refreshed faster than the epics feedback I guess.
-    fel_ener = fel_pulse_energy()
-    while (fel_ener < xray_threshold):
-        time.sleep(1)
-        logger.critical('FEL pulse energy too low!')
-        logger.critical('waiting to recover or call ACR at x2151...')
-        fel_ener = fel_pulse_energy()
-    else:
-        logger.success('FEL pulse energy is {:.3f} mJ.'.format(fel_ener))
     # to run the plan
     RE(p)
     # to save to the elog: needs to be set after the plan is exhausted otehrwise post in t3he wrong run number
@@ -530,7 +468,6 @@ def optical_shot(shutter_close=[1, 2, 3, 4, 5, 6], lpl_ener=1.0, timing=0.0e-9, 
     x.start_seq(1)
     # restore the number of prex shots after the driven shot. Could restore the entire default config at some point.
     x.nsl.prex=0
-    
 
 # For delay line in the chamber:
 # delay_line_t0 to change manually for now
@@ -701,43 +638,13 @@ def pulse_picker(rate=5):
 
 # rolling status definitions
 def ps():
-    if (sh2.position == 'OUT'):
-#        logger.success('Stopper 2 (CXI) is OUT')
-        print(Fore.GREEN + 'Stopper 2 (CXI) is OUT')
-    elif (sh2.position == 'IN'):
-#        logger.critical('Stopper 2 (CXI) is IN')
-        print(Fore.RED + 'Stopper 2 (CXI) is IN')
-    if (sh6.position == 'OUT'):
-#        logger.success('Stopper 6 (MEC) is OUT')
-        print(Fore.GREEN + 'Stopper 6 (MEC) is OUT')
-    elif (sh6.position == 'IN'):
-#        logger.critical('Stopper 6 (MEC) is IN')
-        print(Fore.RED + 'Stopper 6 (MEC) is IN')
+    print("Stopper 2 : "+sh2.position )
+    print("Stopper 6 : "+sh6.position )
     print("reflaser (1.0 is IN) :" +str(ref_y.position))
-    if (yag0.position == 'OUT'):
-#        logger.success('Yag 0 is OUT')
-        print(Fore.GREEN + 'Yag 0 is OUT')
-    elif (yag0.position == 'IN'):
-#        logger.critical('Yag 0 is IN')
-        print(Fore.RED + 'Yag 0 is IN')
-    if (yag1.position == 'OUT'):
-#        logger.success('Yag 1 is OUT')
-        print(Fore.GREEN + 'Yag 1 is OUT')
-    elif (yag1.position == 'IN'):
-#        logger.critical('Yag 1 is IN')
-        print(Fore.RED + 'Yag 1 is IN')
-    if (yag2.position == 'OUT'):
-#        logger.success('Yag 2 is OUT')
-        print(Fore.GREEN + 'Yag 2 is OUT')
-    elif (yag2.position == 'IN'):
-#        logger.critical('Yag 2 is IN')
-        print(Fore.RED + 'Yag 2 is IN')
-    if (yag3.position == 'OUT'):
-#        logger.success('Yag 3 is OUT')
-        print(Fore.GREEN + 'Yag 3 is OUT')
-    elif (yag3.position == 'IN'):
-#        logger.critical('Yag 3 is IN')
-        print(Fore.RED + 'Yag 3 is IN')
+    print("yag0 : "+yag0.position)
+    print("yag1 : "+yag1.position)
+    print("yag2 : "+yag2.position)
+    print("yag3 : "+yag3.position)
     print("pulse picker : "+mec_pulsepicker.position)
     print("at1l0 transmission : " +str(at1l0.position))
     print("at2l0 transmission : " +str(at2l0.position))
@@ -747,51 +654,15 @@ def ps():
     print("slit 3 : "+str(slit3.position))
     print("slit 4 : "+str(slit4.position))
     print("IPMs : UNKNOWN POSITION")
-    be_stack = be_lens_stack.get()
-    if ((be_stack == 1) or (be_stack == 2) or (be_stack == 3)):
-#        logger.warning('Be lens stack {} is IN.'.format(be_stack))
-        print(Fore.YELLOW + 'Be lens stack {} is IN.'.format(be_stack))
-    else:
-#        logger.error('Be lens stack OUT.')
-        print(Fore.RED + 'Be lens stack OUT.')
+    print("BE lens position : "+str(be_lens_stack.get()))
     print("HRM : UNKNOWN POSITION")
     print("******************************************************")
-    if (shutter1.isopen):
-#        logger.warning('Shutter 1 is Open, proceed with caution.')
-        print(Fore.YELLOW + 'Shutter 1 is Open, proceed with caution.')
-    elif (shutter1.isclosed):
-#        logger.success('Shutter 1 is Closed.')
-        print(Fore.GREEN + 'Shutter 1 is Closed.')
-    if (shutter2.isopen):
-#        logger.warning('Shutter 2 is Open, proceed with caution.')
-        print(Fore.YELLOW + 'Shutter 2 is Open, proceed with caution.')
-    elif (shutter2.isclosed):
-#        logger.success('Shutter 2 is Closed.')
-        print(Fore.GREEN + 'Shutter 2 is Closed.')
-    if (shutter3.isopen):
-#        logger.warning('Shutter 3 is Open, proceed with caution.')
-        print(Fore.YELLOW + 'Shutter 3 is Open, proceed with caution.')
-    elif (shutter3.isclosed):
-#        logger.success('Shutter 3 is Closed.')
-        print(Fore.GREEN + 'Shutter 3 is Closed.')
-    if (shutter4.isopen):
-#        logger.warning('Shutter 4 is Open, proceed with caution.')
-        print(Fore.YELLOW + 'Shutter 4 is Open, proceed with caution.')
-    elif (shutter4.isclosed):
-#        logger.success('Shutter 4 is Closed.')
-        print(Fore.GREEN + 'Shutter 4 is Closed.')
-    if (shutter5.isopen):
-#        logger.warning('Shutter 5 is Open, proceed with caution.')
-        print(Fore.YELLOW + 'Shutter 5 is Open, proceed with caution.')
-    elif (shutter5.isclosed):
-#        logger.success('Shutter 5 is Closed.')
-        print(Fore.GREEN + 'Shutter 5 is Closed.')
-    if (shutter6.isopen):
-#        logger.warning('Shutter 6 is Open, proceed with caution.')
-        print(Fore.YELLOW + 'Shutter 6 is Open, proceed with caution.')
-    elif (shutter6.isclosed):
-#        logger.success('Shutter 6 is Closed.')
-        print(Fore.GREEN + 'Shutter 6 is Closed.')
+    print("Shutter 1 open : "+str(shutter1.isopen))
+    print("Shutter 2 open : "+str(shutter2.isopen))
+    print("Shutter 3 open : "+str(shutter3.isopen))
+    print("Shutter 4 open : "+str(shutter4.isopen))
+    print("Shutter 5 open : "+str(shutter5.isopen))
+    print("Shutter 6 open : "+str(shutter6.isopen))
 
 def rs():
     while True:
@@ -869,146 +740,146 @@ def tg_gold():
 def pin():
     """ move to the pin. Uses the User pvs."""
     tgx.mv(pintgx.get())
-    tc_hexapod.x.mv(pinhx.get())
-    tc_hexapod.y.mv(pinhy.get())
-    tc_hexapod.z.mv(pinhz.get())
+    hexx.put(pinhx.get())
+    hexy.put(pinhy.get())
+    hexz.put(pinhz.get())
 
 def pin_s():
     """ saves current position in pin user pv. Uses the User pvs."""
     pintgx.put(tgx())
-    pinhx.put(tc_hexapod.x.get()[2])
-    pinhy.put(tc_hexapod.y.get()[2])
-    pinhz.put(tc_hexapod.z.get()[2])
+    pinhx.put(hexx.get())
+    pinhy.put(hexy.get())
+    pinhz.put(hexz.get())
 
 def pinhole():
     """ move to the pinhole. Uses the User pvs."""
     tgx.mv(pinholetgx.get())
-    tc_hexapod.x.mv(pinholehx.get())
-    tc_hexapod.y.mv(pinholehy.get())
-    tc_hexapod.z.mv(pinholehz.get())
+    hexx.put(pinholehx.get())
+    hexy.put(pinholehy.get())
+    hexz.put(pinholehz.get())
 
 def pinhole_s():
     """ saves current position in pinhole user pv. Uses the User pvs."""
     pinholetgx.put(tgx())
-    pinholehx.put(tc_hexapod.x.get()[2]())
-    pinholehy.put(tc_hexapod.y.get()[2]())
-    pinholehz.put(tc_hexapod.z.get()[2]())
+    pinholehx.put(hexx.get())
+    pinholehy.put(hexy.get())
+    pinholehz.put(hexz.get())
 
 def ceo2():
     """ move to the CeO2 calibrant. Uses the User pvs."""
     tgx.mv(ceo2tgx.get())
-    tc_hexapod.x.mv(ceo2hx.get())
-    tc_hexapod.y.mv(ceo2hy.get())
-    tc_hexapod.z.mv(ceo2hz.get())
+    hexx.put(ceo2hx.get())
+    hexy.put(ceo2hy.get())
+    hexz.put(ceo2hz.get())
 
 def ceo2_s():
     """ saves current position in CeO2 user pv. Uses the User pvs."""
     ceo2tgx.put(tgx())
-    ceo2hx.put(tc_hexapod.x.get()[2]())
-    ceo2hy.put(tc_hexapod.y.get()[2]())
-    ceo2hz.put(tc_hexapod.z.get()[2]())
+    ceo2hx.put(hexx.get())
+    ceo2hy.put(hexy.get())
+    ceo2hz.put(hexz.get())
 
 def lab6():
     """ move to the LaB6 calibrant. Uses the User pvs."""
     tgx.mv(lab6tgx.get())
-    tc_hexapod.x.mv(lab6hx.get())
-    tc_hexapod.y.mv(lab6hy.get())
-    tc_hexapod.z.mv(lab6hz.get())
+    hexx.put(lab6hx.get())
+    hexy.put(lab6hy.get())
+    hexz.put(lab6hz.get())
 
 def lab6_s():
     """ saves current position in LaB6 user pv. Uses the User pvs."""
     lab6tgx.put(tgx())
-    lab6hx.put(tc_hexapod.x.get()[2]())
-    lab6hy.put(tc_hexapod.y.get()[2]())
-    lab6hz.put(tc_hexapod.z.get()[2]())
+    lab6hx.put(hexx.get())
+    lab6hy.put(hexy.get())
+    lab6hz.put(hexz.get())
 
 def cu():
     """ move to the Cu 5 mic calibrant. Uses the User pvs."""
     tgx.mv(cutgx.get())
-    tc_hexapod.x.mv(cuhx.get())
-    tc_hexapod.y.mv(cuhy.get())
-    tc_hexapod.z.mv(cuhz.get())
+    hexx.put(cuhx.get())
+    hexy.put(cuhy.get())
+    hexz.put(cuhz.get())
 
 def cu_s():
     """ saves current position in Cu 5 mic user pv. Uses the User pvs."""
     cutgx.put(tgx())
-    cuhx.put(tc_hexapod.x.get()[2]())
-    cuhy.put(tc_hexapod.y.get()[2]())
-    cuhz.put(tc_hexapod.z.get()[2]())
+    cuhx.put(hexx.get())
+    cuhy.put(hexy.get())
+    cuhz.put(hexz.get())
 
 def zn():
     """ move to the Zn 2.5 mic calibrant. Uses the User pvs."""
     tgx.mv(zntgx.get())
-    tc_hexapod.x.mv(znhx.get())
-    tc_hexapod.y.mv(znhy.get())
-    tc_hexapod.z.mv(znhz.get())
+    hexx.put(znhx.get())
+    hexy.put(znhy.get())
+    hexz.put(znhz.get())
 
 def zn_s():
     """ saves current position in Zn 2.5 mic user pv. Uses the User pvs."""
     zntgx.put(tgx())
-    znhx.put(tc_hexapod.x.get()[2]())
-    znhy.put(tc_hexapod.y.get()[2]())
-    znhz.put(tc_hexapod.z.get()[2]())
+    znhx.put(hexx.get())
+    znhy.put(hexy.get())
+    znhz.put(hexz.get())
 
 def ti():
     """ move to the ti sample. Uses the User pvs."""
     tgx.mv(titgx.get())
-    tc_hexapod.x.mv(tihx.get())
-    tc_hexapod.y.mv(tihy.get())
-    tc_hexapod.z.mv(tihz.get())
+    hexx.put(tihx.get())
+    hexy.put(tihy.get())
+    hexz.put(tihz.get())
 
 def ti_s():
     """ saves current position in ti user pv. Uses the User pvs."""
     titgx.put(tgx())
-    tihx.put(tc_hexapod.x.get()[2]())
-    tihy.put(tc_hexapod.y.get()[2]())
-    tihz.put(tc_hexapod.z.get()[2]())
+    tihx.put(hexx.get())
+    tihy.put(hexy.get())
+    tihz.put(hexz.get())
 
 def grid():
     """ move to the grid sample. Uses the User pvs."""
     tgx.mv(gridtgx.get())
-    tc_hexapod.x.mv(gridhx.get())
-    tc_hexapod.y.mv(gridhy.get())
-    tc_hexapod.z.mv(gridhz.get())
+    hexx.put(gridhx.get())
+    hexy.put(gridhy.get())
+    hexz.put(gridhz.get())
 
 def grid_s():
     """ saves current position in grid user pv. Uses the User pvs."""
     gridtgx.put(tgx())
-    gridhx.put(tc_hexapod.x.get()[2]())
-    gridhy.put(tc_hexapod.y.get()[2]())
-    gridhz.put(tc_hexapod.z.get()[2]())
+    gridhx.put(hexx.get())
+    gridhy.put(hexy.get())
+    gridhz.put(hexz.get())
 
 def yag():
     """ move to the yag."""
     tgx.mv(yagtgx.get())
-    tc_hexapod.x.mv(yaghx.get())
-    tc_hexapod.y.mv(yaghy.get())
-    tc_hexapod.z.mv(yaghz.get())
+    hexx.put(yaghx.get())
+    hexy.put(yaghy.get())
+    hexz.put(yaghz.get())
 
 def yag_s():
     """ saves current position in the yag user pv. Uses the User pvs."""
     yagtgx.put(tgx())
-    yaghx.put(tc_hexapod.x.get()[2]())
-    yaghy.put(tc_hexapod.y.get()[2]())
-    yaghz.put(tc_hexapod.z.get()[2]())
+    yaghx.put(hexx.get())
+    yaghy.put(hexy.get())
+    yaghz.put(hexz.get())
 
 def rc_grid():
     """ move to the ronchi Grid target."""
     print('Moving to Ronchi Grid target.')
     tgx.mv(141.62)
-    tc_hexapod.x.mv(-0.1)
-    tc_hexapod.y.mv(3.080)
-    tc_hexapod.z.mv(-0.220)
+    hexx.put(-0.1)
+    hexy.put(3.080)
+    hexz.put(-0.220)
 
 def rc_siemens():
     """ move to the ronchi Siemens target."""
     print('Moving to Ronchi Siemens target.')
     tgx.mv(141.62)
-    tc_hexapod.x.mv(-0.1)
-    tc_hexapod.y.mv(2.780)
-    tc_hexapod.z.mv(-0.210)
+    hexx.put(-0.1)
+    hexy.put(2.780)
+    hexz.put(-0.210)
 
-def xray_pm():
+def power_meter():
     """ move to the Power Meter."""
     print('Moving to the Power Meter from XPP.')
     s500mm.put(53.0)
@@ -1079,7 +950,7 @@ def talbot_out():
 # target motion definition (TO DO: add target.tweakxy)
 def target_up(n=1):
     """ moves up n spaces, spacing is 3.5mm"""
-    tc_hexapod.y.mv(tc_hexapod.y.get()[2]()+(n*3.5))
+    hexy.put(hexy.get()+(n*3.5))
 
 def target_down(n=1):
     """ moves down n spaces, spacing is 3.5mm"""
@@ -1095,27 +966,27 @@ def target_prev(n=1):
 
 def target_return():
     """ returns target stage position to previous saved values"""
-    tc_hexapod.x.mv(targetsavehx.get())
-    tc_hexapod.y.mv(targetsavehy.get())
-    tc_hexapod.z.mv(targetsavehz.get())
+    hexx.put(targetsavehx.get())
+    hexy.put(targetsavehy.get())
+    hexz.put(targetsavehz.get())
     tgx(targetsavetgx.get())
 
 def target_save():
     """ saves current target stage position in userpvs. You can go back with target_return() """
-    targetsavehx.put(tc_hexapod.x.get()[2])
-    targetsavehy.put(tc_hexapod.y.get()[2])
-    targetsavehz.put(tc_hexapod.z.get()[2])
+    targetsavehx.put(hexx.get())
+    targetsavehy.put(hexy.get())
+    targetsavehz.put(hexz.get())
     targetsavetgx.put(tgx())
 
 def scan(offset=4., align=0.22, att=1.):
     """ get a white field set of images and then take a set of images with a target in"""
     print('White field, 100 images.')
-    tc_hexapod.z.mv(-offset+align)
+    hexz.put(-offset+align)
     time.sleep(5)
     ref_only(xray_trans=1, xray_num=100, dark=False, visar=False, save=True, daq_end=True, rate=10)
     daq.disconnect()
     print('X-ray only on target, 1 image at {}%.'.format(att*100.))
-    tc_hexapod.z.mv(align)
+    hexz.put(align)
     time.sleep(5)
     ref_only(xray_trans=att, xray_num=10, dark=False, visar=False, save=True, daq_end=True, rate=1)
     daq.disconnect()
@@ -1123,13 +994,13 @@ def scan(offset=4., align=0.22, att=1.):
 def scan_n(offset=3., att=.1):
     """ get a white field set of images and then take a set of images with a target in"""
     print('White field, 100 images.')
-    hz_t=tc_hexapod.z.get()[2]()
-    tc_hexapod.z.mv(hz_t+offset)
+    hz_t=hexz.get()
+    hexz.put(hz_t+offset)
     time.sleep(5)
     ref_only(xray_trans=1, xray_num=100, dark=False, visar=False, save=True, daq_end=True, rate=10)
     daq.disconnect()
     print('X-ray only on target, 1 image at {}%.'.format(att*100.))
-    tc_hexapod.z.mv(hz_t)
+    hexz.put(hz_t)
     time.sleep(5)
     ref_only(xray_trans=att, xray_num=10, dark=False, visar=False, save=True, daq_end=True, rate=1)
     daq.disconnect()
@@ -1139,10 +1010,10 @@ def references(xray_target=0.1):
     x.start_seq(5)
     print('Moving Talbot OUT')
     talbot_out()
-    scan(offset=1., align=tc_hexapod.z.get()[2](), att=xray_target)
+    scan(offset=1., align=hexz.get(), att=xray_target)
     print('Moving Talbot IN')
     talbot_in()
-    scan(offset=1., align=tc_hexapod.z.get()[2](), att=xray_target)
+    scan(offset=1., align=hexz.get(), att=xray_target)
     x.start_seq(5)
 
 # -- Definitions for the target motion using letters -------------------------
@@ -1155,7 +1026,7 @@ half_u = 19.5
 # defining a global variable to store the current target position
 msg_log_target = ''
 
-def move_to_target(config='colinear', frame_cfg=[1, 'F1', 1, 'F2', 1, 'F3'], frame=1, target='A1', visar_disable=True):
+def move_to_target(config='colinear', frame_cfg=[1, 'F1', 1, 'F2', 1, 'F3'], frame=1, target='A1'):
     '''
     Description: script to move to a predefined target in the target holder. Assuming 
     for now that columns are letters, and raws are numbers. Columns start from A and 
@@ -1168,14 +1039,13 @@ def move_to_target(config='colinear', frame_cfg=[1, 'F1', 1, 'F2', 1, 'F3'], fra
     57 and 58.
 
     IN:
-        config          : set the experimental configuration to use. It will enable or disable arguments accordingly.
-        frame_cfg       : the configuration of the frames on the target holder as viewed from 
-                          the back, meaning the opposite view of Q1. TO DO: need to confirm size 
-                          of the half-U frame.
-        frame           : the number of the frame where the targets are located. Can be full size 
-                          or half size U frame. TO DO: need to confirm size of the half-U frame.
-        target          : the number of the target to go to within this frame.
-        visar_disable   : disable the visar laser between shots if True to not burn the streak whn gain/energy are increased due to poor target reflectivity
+        config    : set the experimental configuration to use. It will enable or disable arguments accordingly.
+        frame_cfg : the configuration of the frames on the target holder as viewed from 
+                    the back, meaning the opposite view of Q1. TO DO: need to confirm size 
+                    of the half-U frame.
+        frame     : the number of the frame where the targets are located. Can be full size 
+                    or half size U frame. TO DO: need to confirm size of the half-U frame.
+        target    : the number of the target to go to within this frame.
     OUT:
         move to target
     '''
@@ -1184,10 +1054,6 @@ def move_to_target(config='colinear', frame_cfg=[1, 'F1', 1, 'F2', 1, 'F3'], fra
     # extract the values used to correct the aligned position vs the default position
     xcorr=EpicsSignal('MEC:NOTE:DOUBLE:57').get()
     ycorr=EpicsSignal('MEC:NOTE:DOUBLE:58').get()
-
-    # turn off VISAR light before moving to target to prevent damage on the cameras
-    if (visar_disable == True):
-        visar_mode('move')
 
     # if the configuration is colinear, use frames
     if (config == 'colinear'):
@@ -1202,8 +1068,8 @@ def move_to_target(config='colinear', frame_cfg=[1, 'F1', 1, 'F2', 1, 'F3'], fra
         y_start_pos = -12.0
         x_step = 3.7
         y_step = 3.5
-#        tc_hexapod.x.mv(0.240)
-#        tc_hexapod.z.mv(0.590)
+        hexx.put(0.240)
+        hexz.put(0.590)
         frame_pos = x_start_pos 
         if (frame > 1):
     	# -1 to not account for the first frame, and count for the other position in the array
@@ -1230,9 +1096,8 @@ def move_to_target(config='colinear', frame_cfg=[1, 'F1', 1, 'F2', 1, 'F3'], fra
         if (target_col > 1):
             x_target_pos = x_target_pos + ((target_col - 1) * x_step)
         # execute the motion
-        tgx.umv(pin_pos - (x_target_pos + frame_pos) + xcorr)
-        #tc_hexapod.y.mv(y_target_pos + ycorr)
-        tc_hexapod.y.umv(y_target_pos + ycorr)
+        tgx(pin_pos - (x_target_pos + frame_pos) + xcorr)
+        hexy.put(y_target_pos + ycorr)
         print('Moving to Frame {}, target {}.'.format(frame, target))
         print('Tweak position as appropriate.')
         print('The frame configuration is {}.'.format(frame_cfg))
@@ -1250,9 +1115,8 @@ def move_to_target(config='colinear', frame_cfg=[1, 'F1', 1, 'F2', 1, 'F3'], fra
         y_target_pos = -12.1
         x_step = 11.303
         y_step = 3.0
-        # not sure why these two lines where here so commented them out E.G. 02/
-        #tc_hexapod.x.mv(-0.230)
-        #tc_hexapod.z.mv(-0.110)
+        hexx.put(-0.230)
+        hexz.put(-0.110)
         # calculating the y position of the target
         if (target_raw > 1):
             y_target_pos = y_target_pos + ((target_raw - 1) * y_step)
@@ -1260,16 +1124,13 @@ def move_to_target(config='colinear', frame_cfg=[1, 'F1', 1, 'F2', 1, 'F3'], fra
         if (target_col > 1):
             x_target_pos = x_target_pos - ((target_col - 1) * x_step)
         # execute the motion
-        tgx.umv(x_target_pos + xcorr)
-        tc_hexapod.y.umv(y_target_pos + ycorr)
+        tgx(x_target_pos + xcorr)
+        hexy.put(y_target_pos + ycorr)
         print('Moving to target {}.'.format(target))
         print('Tweak position as appropriate.')
         # print in the eLog only the naming used by the users to avoid confusion
         msg_log_target = 'on target {}'.format(target)
         
-    # restore DAQ status for VISAR readiness to see visar light
-    if (visar_disable == True):
-        visar_mode('daq')
 
 
 # -----------------------------------------------------------------------------
@@ -1578,7 +1439,7 @@ def imaging_system(position = 'OUT'):
 
 def wire_next_row(n=1):
     """ moves up n spaces, spacing is 7 mm """
-    tc_hexapod.y.mv(tc_hexapod.y.get()[2]()+(n*7.0))
+    hexy.put(hexy.get()+(n*7.0))
 
 def wire_next_column(n=1):
     """ moves next n spaces, spacing is 7 mm """
@@ -1603,7 +1464,7 @@ def next_wire():
         print('You are on the last column...')
         print('Motion not allowed!')
     else:
-        if ((tc_hexapod.y.get()[2]() > 8.0) and (tc_hexapod.y.get()[2]() < 12.4)):
+        if ((hexy.get() > 8.0) and (hexy.get() < 12.4)):
             wire_new_column()
         else:
             wire_next_row()
@@ -1665,7 +1526,7 @@ def spl_focus_alignment():
     pin()
     print('Waiting 10s for the pin to move IN')
     time.sleep(10)
-    tc_hexapod.y.mv(tc_hexapod.y.get()[2]()-3.0)
+    hexy.put(hexy.get()-3.0)
     fw4set(position = 6)
     imaging_system('IN')
     print('Ready to send the focused beam')
@@ -1698,6 +1559,7 @@ def spl_shot_readiness():
     spl_slicer_evr_btn.put(0)
     print('SPL slicer trigger DISABLE')
     pm('IN')
+    lights_off()
     imaging_system('OUT')
     if (check_tg_im_out() is False):
         print('IMAGING SYSTEM NOT OUT ... DO NOT SHOOT')

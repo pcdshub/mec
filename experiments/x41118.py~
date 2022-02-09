@@ -1,0 +1,4 @@
+# test input script for lv25
+
+def print_text(char):
+    print('Your text is {}'.format(char))

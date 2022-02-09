@@ -1,0 +1,14 @@
+# pin: tgx, tgy, tgz
+32.37
+34.94
+6.4
+
+# catcher: tgx, tgy, tgz
+11.37
+52.94
+6.875
+
+# gold: tgx, tgy, tgz
+81
+15.94
+6.4

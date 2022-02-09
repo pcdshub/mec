@@ -1,7 +1,7 @@
 import time
 import numpy as np
 # used to color the output text
-from colorama import init, Fore, Back, Style
+#from colorama import init, Fore, Back, Style
 
 from datetime import datetime
 import matplotlib.pyplot as plt
@@ -29,15 +29,14 @@ from mec.visar_bed import *
 
 from ophyd import EpicsSignal 
 
-# force color rest at the end of any print statement
-init(autoreset = True)
-
 # logging declaration copy/paste from the utils.py file in hutch-python. Will add new definition though
 SUCCESS_LEVEL = 35
 logging.addLevelName('SUCCESS', SUCCESS_LEVEL)
 logger = logging.getLogger(__name__)
 logger.success = partial(logger.log, SUCCESS_LEVEL)
 
+# force color rest at the end of any print statement
+#init(autoreset = True)
 
 talbot_x=Motor('MEC:PPL:MMN:21', name='talbot_x')
 
@@ -702,42 +701,30 @@ def pulse_picker(rate=5):
 # rolling status definitions
 def ps():
     if (sh2.position == 'OUT'):
-#        logger.success('Stopper 2 (CXI) is OUT')
-        print(Fore.GREEN + 'Stopper 2 (CXI) is OUT')
+        logger.success('Stopper 2 (CXI) is OUT')
     elif (sh2.position == 'IN'):
-#        logger.critical('Stopper 2 (CXI) is IN')
-        print(Fore.RED + 'Stopper 2 (CXI) is IN')
+        logger.critical('Stopper 2 (CXI) is IN')
     if (sh6.position == 'OUT'):
-#        logger.success('Stopper 6 (MEC) is OUT')
-        print(Fore.GREEN + 'Stopper 6 (MEC) is OUT')
+        logger.success('Stopper 6 (MEC) is OUT')
     elif (sh6.position == 'IN'):
-#        logger.critical('Stopper 6 (MEC) is IN')
-        print(Fore.RED + 'Stopper 6 (MEC) is IN')
+        logger.critical('Stopper 6 (MEC) is IN')
     print("reflaser (1.0 is IN) :" +str(ref_y.position))
     if (yag0.position == 'OUT'):
-#        logger.success('Yag 0 is OUT')
-        print(Fore.GREEN + 'Yag 0 is OUT')
+        logger.success('Yag 0 is OUT')
     elif (yag0.position == 'IN'):
-#        logger.critical('Yag 0 is IN')
-        print(Fore.RED + 'Yag 0 is IN')
+        logger.critical('Yag 0 is IN')
     if (yag1.position == 'OUT'):
-#        logger.success('Yag 1 is OUT')
-        print(Fore.GREEN + 'Yag 1 is OUT')
+        logger.success('Yag 1 is OUT')
     elif (yag1.position == 'IN'):
-#        logger.critical('Yag 1 is IN')
-        print(Fore.RED + 'Yag 1 is IN')
+        logger.critical('Yag 1 is IN')
     if (yag2.position == 'OUT'):
-#        logger.success('Yag 2 is OUT')
-        print(Fore.GREEN + 'Yag 2 is OUT')
+        logger.success('Yag 2 is OUT')
     elif (yag2.position == 'IN'):
-#        logger.critical('Yag 2 is IN')
-        print(Fore.RED + 'Yag 2 is IN')
+        logger.critical('Yag 2 is IN')
     if (yag3.position == 'OUT'):
-#        logger.success('Yag 3 is OUT')
-        print(Fore.GREEN + 'Yag 3 is OUT')
+        logger.success('Yag 3 is OUT')
     elif (yag3.position == 'IN'):
-#        logger.critical('Yag 3 is IN')
-        print(Fore.RED + 'Yag 3 is IN')
+        logger.critical('Yag 3 is IN')
     print("pulse picker : "+mec_pulsepicker.position)
     print("at1l0 transmission : " +str(at1l0.position))
     print("at2l0 transmission : " +str(at2l0.position))
@@ -749,49 +736,35 @@ def ps():
     print("IPMs : UNKNOWN POSITION")
     be_stack = be_lens_stack.get()
     if ((be_stack == 1) or (be_stack == 2) or (be_stack == 3)):
-#        logger.warning('Be lens stack {} is IN.'.format(be_stack))
-        print(Fore.YELLOW + 'Be lens stack {} is IN.'.format(be_stack))
+        logger.warning('Be lens stack {} is IN.'.format(be_stack))
     else:
-#        logger.error('Be lens stack OUT.')
-        print(Fore.RED + 'Be lens stack OUT.')
+        logger.error('Be lens stack OUT.')
     print("HRM : UNKNOWN POSITION")
     print("******************************************************")
     if (shutter1.isopen):
-#        logger.warning('Shutter 1 is Open, proceed with caution.')
-        print(Fore.YELLOW + 'Shutter 1 is Open, proceed with caution.')
+        logger.warning('Shutter 1 is Open, proceed with caution.')
     elif (shutter1.isclosed):
-#        logger.success('Shutter 1 is Closed.')
-        print(Fore.GREEN + 'Shutter 1 is Closed.')
+        logger.success('Shutter 1 is Closed.')
     if (shutter2.isopen):
-#        logger.warning('Shutter 2 is Open, proceed with caution.')
-        print(Fore.YELLOW + 'Shutter 2 is Open, proceed with caution.')
+        logger.warning('Shutter 2 is Open, proceed with caution.')
     elif (shutter2.isclosed):
-#        logger.success('Shutter 2 is Closed.')
-        print(Fore.GREEN + 'Shutter 2 is Closed.')
+        logger.success('Shutter 2 is Closed.')
     if (shutter3.isopen):
-#        logger.warning('Shutter 3 is Open, proceed with caution.')
-        print(Fore.YELLOW + 'Shutter 3 is Open, proceed with caution.')
+        logger.warning('Shutter 3 is Open, proceed with caution.')
     elif (shutter3.isclosed):
-#        logger.success('Shutter 3 is Closed.')
-        print(Fore.GREEN + 'Shutter 3 is Closed.')
+        logger.success('Shutter 3 is Closed.')
     if (shutter4.isopen):
-#        logger.warning('Shutter 4 is Open, proceed with caution.')
-        print(Fore.YELLOW + 'Shutter 4 is Open, proceed with caution.')
+        logger.warning('Shutter 4 is Open, proceed with caution.')
     elif (shutter4.isclosed):
-#        logger.success('Shutter 4 is Closed.')
-        print(Fore.GREEN + 'Shutter 4 is Closed.')
+        logger.success('Shutter 4 is Closed.')
     if (shutter5.isopen):
-#        logger.warning('Shutter 5 is Open, proceed with caution.')
-        print(Fore.YELLOW + 'Shutter 5 is Open, proceed with caution.')
+        logger.warning('Shutter 5 is Open, proceed with caution.')
     elif (shutter5.isclosed):
-#        logger.success('Shutter 5 is Closed.')
-        print(Fore.GREEN + 'Shutter 5 is Closed.')
+        logger.success('Shutter 5 is Closed.')
     if (shutter6.isopen):
-#        logger.warning('Shutter 6 is Open, proceed with caution.')
-        print(Fore.YELLOW + 'Shutter 6 is Open, proceed with caution.')
+        logger.warning('Shutter 6 is Open, proceed with caution.')
     elif (shutter6.isclosed):
-#        logger.success('Shutter 6 is Closed.')
-        print(Fore.GREEN + 'Shutter 6 is Closed.')
+        logger.success('Shutter 6 is Closed.')
 
 def rs():
     while True:
