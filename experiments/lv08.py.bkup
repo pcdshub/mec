@@ -1,0 +1,117 @@
+from subprocess import check_output
+
+import json
+import sys
+import time
+import os
+import socket
+import logging
+
+import numpy as np
+from hutch_python.utils import safe_load
+from ophyd import EpicsSignalRO
+from ophyd import EpicsSignal
+from bluesky import RunEngine
+from bluesky.plans import scan
+from bluesky.plans import list_scan
+from bluesky.plans import list_grid_scan, scan_nd
+from ophyd import Component as Cpt
+from ophyd import Device
+from mec.db import daq, seq
+from mec.db import RE
+import sys
+#sys.path.append('/reg/g/pcds/pyps/apps/hutch-python/xpp/experiments/')
+
+
+class User():
+    #def __init__(self):
+   
+    def start_seq(self, rate=120, wLPLaser=False):
+        if rate==120:
+            sync_mark = 6#int(_sync_markers[120])
+        elif rate==60:
+            sync_mark = 5
+        elif rate==30:
+            sync_mark = 4
+        elif rate==10:
+            sync_mark = 3
+        elif rate==5:
+            sync_mark = 2
+        elif rate==1:
+            sync_mark = 1
+        elif rate==0.5:
+            sync_mark = 0
+        seq.sync_marker.put(sync_mark)
+        seq.play_mode.put(2) # Run sequence forever
+        ff_seq = [[169, 0, 0, 0]]
+        if wLPLaser:
+            ff_seq.append([182, 0, 0, 0])
+        seq.sequence.put_seq(ff_seq) 
+        seq.start()
+
+    def start_seq_120Hz(self):
+        #self.start_seq_120Hz(120)
+        sync_mark = 6#int(_sync_markers[120])
+        seq.sync_marker.put(sync_mark)
+        seq.play_mode.put(2) # Run sequence forever
+        ff_seq = [[169, 0, 0, 0]]
+        seq.sequence.put_seq(ff_seq) 
+        seq.start()
+
+    def start_seq_10Hz(self, wLPLaser=False):
+        sync_mark = 3#int(_sync_markers[10])
+        seq.sync_marker.put(sync_mark)
+        seq.play_mode.put(2) # Run sequence forever
+        ff_seq = [[169, 0, 0, 0]]
+        if wLPLaser:
+            ff_seq.append([182, 0, 0, 0])
+        seq.sequence.put_seq(ff_seq) 
+        seq.start()
+
+
+    ###############################################################################################
+    #                   Functions from default files
+    ###############################################################################################
+    def takeRun(self, nEvents, record=None):
+        daq.configure(events=120, record=record)
+        daq.begin(events=nEvents)
+        daq.wait()
+        daq.end_run()
+
+    # dscan & ascan kludge for x421 evr delay scan, as the evr object does not have the wm and mv attributes
+    def pvascan(self, motor, start, end, nsteps, nEvents, record=None):
+        currPos = motor.get()
+        daq.configure(nEvents, record=record, controls=[motor])
+        RE(scan([daq], motor, start, end, nsteps))
+        motor.put(currPos)
+
+    def pvdscan(self, motor, start, end, nsteps, nEvents, record=None):
+        daq.configure(nEvents, record=record, controls=[motor])
+        currPos = motor.get()
+        RE(scan([daq], motor, currPos + start, currPos + end, nsteps))
+        motor.put(currPos)
+
+    def ascan(self, motor, start, end, nsteps, nEvents, record=None):
+        currPos = motor.wm()
+        daq.configure(nEvents, record=record, controls=[motor])
+        RE(scan([daq], motor, start, end, nsteps))
+        motor.mv(currPos)
+
+    def listscan(self, motor, posList, nEvents, record=None):
+        currPos = motor.wm()
+        daq.configure(nEvents, record=record, controls=[motor])
+        RE(list_scan([daq], motor, posList))
+        motor.mv(currPos)
+
+    def dscan(self, motor, start, end, nsteps, nEvents, record=None):
+        daq.configure(nEvents, record=record, controls=[motor])
+        currPos = motor.wm()
+        RE(scan([daq], motor, currPos + start, currPos + end, nsteps))
+        motor.mv(currPos)
+
+    def a2scan(self, m1, a1, b1, m2, a2, b2, nsteps, nEvents, record=None):
+        daq.configure(nEvents, record=record, controls=[m1, m2])
+        RE(scan([daq], m1, a1, b1, m2, a2, b2, nsteps))
+
+
+
