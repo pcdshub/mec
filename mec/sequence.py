@@ -60,7 +60,7 @@ def generateSequence(code_list, total_beamdelta):
 
 class Sequence:
     """Class for defining event sequences for the MEC instrument."""
-    def __init__(self):
+    def __init__(self, SlowCam=False):
         # MEC event code defs
         self.EC = {'slowcam':      167,
                    'pulsepicker':  168,
@@ -73,7 +73,7 @@ class Sequence:
 
         # Initialize config
         self.prelasertrig = 0
-        self.slowcam = False 
+        self.slowcam = SlowCam 
         self.slowcamdelay = 5
         self.rate = 5
 

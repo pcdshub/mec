@@ -1,0 +1,165 @@
+import logging
+import bluesky.plan_stubs as bps
+import time
+#from mec.laser import NanoSecondLaser
+
+from pcdsdevices.epics_motor import Motor
+
+from mec.db import seq, daq
+from mec.sequence import Sequence
+from mec.laser import FemtoSecondLaser, NanoSecondLaser
+
+logger = logging.getLogger(__name__)
+
+thz_motor = Motor('MEC:USR:MMS:17', name='thz_motor')
+spl_motor = Motor('MEC:USR:MMS:17', name='spl_motor')
+
+class User():
+    thz_blocked_pos = 150.0 # Placeholder; needs to be defined
+    thz_passed_pos = 152.0  # Placeholder; needs to be defined
+    spl_blocked_pos = 150.0 # Placeholder; needs to be defined
+    spl_passed_pos = 152.0  # Placeholder; needs to be defined
+    thz_motor = thz_motor
+    spl_motor = spl_motor
+    shutters = [1,2,3,4,5,6]
+    _seq = Sequence()
+
+    def longpulse_shot(self, record=True, end_run=True):
+        """
+        Returns a BlueSky plan to perform a long pulse laser shot. Collects a
+        long pulse laser only shots.
+        
+        Parameters:
+        -----------
+        record : bool <default: True>
+            Flag to record the data (or not).
+
+        end_run : bool <default: True>
+            Flag to end the run after completion (or not).
+        """
+        logging.debug("Calling User.longpulse_shot with parameters:")        
+        logging.debug("record: {}".format(record))        
+        logging.debug("end_run: {}".format(end_run))
+
+        print("Configuring shots...")
+        nsl = NanoSecondLaser()
+        config = {'during': 0, 'preo': 1, 'shutters': self.shutters}
+        nsl.configure(config)
+       
+        return nsl.shot(record=record, end_run=end_run) 
+
+    def xrd_cal(self, nshots=1, record=True, end_run=True):
+        """
+        Returns a BlueSky plan to perform an XRD calibration run. Collects a
+        number of X-ray only shots.
+        
+        Parameters:
+        -----------
+        nshots : int <default: 1>
+            The number of shots that you would like to take in the run.
+
+        record : bool <default: True>
+            Flag to record the data (or not).
+
+        end_run : bool <default: True>
+            Flag to end the run after completion (or not).
+        """
+        logging.debug("Calling User.xrd_cal with parameters:")        
+        logging.debug("nshots: {}".format(nshots))        
+        logging.debug("record: {}".format(record))        
+        logging.debug("end_run: {}".format(end_run))
+
+        print("Configuring shots...")
+        fsl = FemtoSecondLaser()
+        config = {'rate': 5, 'during': 0, 'prex': nshots,\
+                  'shutters': self.shutters}
+        fsl.configure(config)
+       
+        return fsl.shot(record=record, end_run=end_run) 
+
+    def ech_background(self, nshots=1, record=True, end_run=True):
+        """
+        Returns a BlueSky plan to perform an echelon background run. Collects a 
+        number of short pulse shots with THz generation blocked. 
+        
+        Parameters:
+        -----------
+        nshots : int <default: 1>
+            The number of shots that you would like to take in the run.
+
+        record : bool <default: True>
+            Flag to record the data (or not).
+
+        end_run : bool <default: True>
+            Flag to end the run after completion (or not).
+        """
+        logging.debug("Calling User.ech_background with parameters:")        
+        logging.debug("nshots: {}".format(nshots))        
+        logging.debug("record: {}".format(record))        
+        logging.debug("end_run: {}".format(end_run))
+
+        # Block THz generation
+        print("Blocking THz generation...")
+        self.thz_motor.mv(self.thz_blocked_pos, wait=True)
+
+        print("Configuring shots...")
+        fsl = FemtoSecondLaser()
+        config = {'rate': 5, 'during': 0, 'preo': nshots, 'prex': 0,\
+                  'shutters': self.shutters}
+        fsl.configure(config)
+       
+        return fsl.shot(record=record, end_run=end_run) 
+
+    def thz_reference(self, nshots=1, record=True, end_run=True):
+        """
+        Returns a BlueSky plan to perform an THz reference run. Collects a 
+        number of short pulse laser shots with THz generation un-blocked. 
+        
+        Parameters:
+        -----------
+        nshots : int <default: 1>
+            The number of shots that you would like to take in the run.
+
+        record : bool <default: True>
+            Flag to record the data (or not).
+
+        end_run : bool <default: True>
+            Flag to end the run after completion (or not).
+        """
+        logging.debug("Calling User.ths_reference with parameters:")        
+        logging.debug("nshots: {}".format(nshots))        
+        logging.debug("record: {}".format(record))        
+        logging.debug("end_run: {}".format(end_run))
+
+        # Block THz generation
+        print("Un-blocking THz generation...")
+        self.thz_motor.mv(self.thz_passed_pos, wait=True)
+
+        print("Configuring shots...")
+        fsl = FemtoSecondLaser()
+        config = {'rate': 5, 'during': 0, 'preo': nshots, 'prex': 0,\
+                  'shutters': self.shutters}
+        fsl.configure(config)
+       
+        return fsl.shot(record=record, end_run=end_run) 
+
+
+#        yield from bps.configure(daq, begin_sleep=2, record=record,
+#                                 use_l3t=False, controls=[])
+#
+#        dets = [daq, seq]
+#
+#        for det in dets:
+#            yield from bps.stage(det)
+#
+#        # Setup the pulse picker for single shots in flip flop mode
+#        pp.flipflop(wait=True)
+#
+#        # Setup sequencer for requested rate
+#        seq.sync_marker.put(2) # 5Hz sync marker
+#        seq.play_mode.put(0) # Run sequence once
+#
+#        # Setup shot sequence
+#        self._sequence.configure(rate=5)
+#        s = self._sequence.darkXraySequence(nshots, preshot=True)
+#        seq.sequence.put_seq(s)

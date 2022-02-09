@@ -1,5 +1,10 @@
 from hutch_python.utils import safe_load
 import time
+import requests
+#get the experiment name
+ws_url = "https://pswww.slac.stanford.edu/ws/lgbk"
+resp = requests.get(ws_url + "/lgbk/ws/activeexperiment_for_instrument_station", {"instrument_name": "mec", "station": "0"})
+experimentName = resp.json().get("value", {}).get("name")
 
 
 with safe_load('shutters'):
@@ -15,14 +20,17 @@ with safe_load('shutters'):
 with safe_load('chamber lights'):
     from .devices import LedLights
     focusedchamberlight = LedLights("MEC:PR60:PWR:1:Outlet:1", name='focused chamber light')
-    brightchamberlight = LedLights("MEC:PR60:PWR:1:Outlet:6", name='bright chamber light')
+    fronttargetlight = LedLights("MEC:PR60:PWR:1:Outlet:6", name='front target light')
+    brightchamberlight = LedLights("MEC:PR60:PWR:1:Outlet:8", name='bright chamber light')
     #visarlight = LedLights("MEC:PR60:PWR:1:Outlet:8", name='visar light') # Not currently plugged in
     def lights_on():
         focusedchamberlight.on()
+        fronttargetlight.on()
         brightchamberlight.on()
         #visarlight.on()
     def lights_off():
         focusedchamberlight.off()
+        fronttargetlight.off()
         brightchamberlight.off()
         #visarlight.off()
 
@@ -144,6 +152,11 @@ with safe_load('mec timing'):
     from .mec_timing import FSTiming, NSTiming, lpl_save_master_timing
     fstiming = FSTiming()
     nstiming = NSTiming()
+
+with safe_load('visar timing'):
+    from .macros.operation import VisTiming
+    print('toto')
+#    vistiming = VisTiming()
 
 with safe_load('SPL Modes'):
     from .spl_modes import DG645

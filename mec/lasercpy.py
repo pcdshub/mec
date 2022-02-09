@@ -11,7 +11,7 @@ import bluesky.plan_stubs as bps
 import bluesky.preprocessors as bpp
 from mec.db import daq, seq
 from mec.db import shutter1, shutter2, shutter3, shutter4, shutter5, shutter6
-#from mec.db import mec_pulsepicker as pp
+from mec.db import mec_pulsepicker as pp
 from .sequence import Sequence
 
 from mecps import *
@@ -357,16 +357,14 @@ class Laser():
         yield from bps.configure(daq, events=0, begin_sleep=10, record=record, use_l3t=use_l3t, controls=controls)
 
         # Check for slow cameras, stage if requested
-        #print("***********************")
-        #if self._config['slowcam']:
-            #print("***********************")
-            #from .slowcams import SlowCameras
-            #self._slowcams = SlowCameras(self._config)
-            #dets.append(self._slowcams) # Add this in to auto-unstage later
-            #yield from bps.stage(self._slowcams)
+        if self._config['slowcam']:
+            from .slowcams import SlowCameras
+            self._slowcams = SlowCameras()
+            dets.append(self._slowcams) # Add this in to auto-unstage later
+            yield from bps.stage(self._slowcams)
 
         # Setup the pulse picker for single shots in flip flop mode
-        #pp.flipflop(wait=True)
+        pp.flipflop(wait=True)
 
         # Setup sequencer for requested rate
         sync_mark = int(self._sync_markers[self._config['rate']])
@@ -900,7 +898,7 @@ class DualLaser(Laser):
             yield from bps.stage(self._slowcams)
 
         # Setup the pulse picker for single shots in flip flop mode
-        #pp.flipflop(wait=True)
+        pp.flipflop(wait=True)
 
         # Setup sequencer for requested rate
         sync_mark = int(self._sync_markers[self._config['rate']])
