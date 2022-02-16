@@ -711,19 +711,19 @@ def ps():
     print("reflaser (1.0 is IN) :" +str(ref_y.position))
     if (yag0.position == 'OUT'):
         logger.success('Yag 0 is OUT')
-    elif (yag0.position == 'IN'):
+    elif (yag0.position == 'YAG'):
         logger.critical('Yag 0 is IN')
     if (yag1.position == 'OUT'):
         logger.success('Yag 1 is OUT')
-    elif (yag1.position == 'IN'):
+    elif (yag1.position == 'YAG'):
         logger.critical('Yag 1 is IN')
     if (yag2.position == 'OUT'):
         logger.success('Yag 2 is OUT')
-    elif (yag2.position == 'IN'):
+    elif (yag2.position == 'YAG'):
         logger.critical('Yag 2 is IN')
     if (yag3.position == 'OUT'):
         logger.success('Yag 3 is OUT')
-    elif (yag3.position == 'IN'):
+    elif (yag3.position == 'YAG'):
         logger.critical('Yag 3 is IN')
     print("pulse picker : "+mec_pulsepicker.position)
     print("at1l0 transmission : " +str(at1l0.position))
