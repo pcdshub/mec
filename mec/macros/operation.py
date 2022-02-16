@@ -217,6 +217,13 @@ def scope_timing_remote():
     '''
     os.system('vncviewer 172.21.46.60 &')
 
+def digitizer_gui():
+    '''
+    Description: start the digitizer GUI, it lives in Mike Browne path so to change later when stable.
+    '''
+    os.system('/cds/home/m/mcbrowne/trunk2/ioc/common/qadc/children/build/iocBoot/ioc-mec-qadc134/edm-ioc-mec-qadc134.cmd&')
+    print('Press Enter to return to python prompt.')
+
 def load_presets():
     '''
     Description: load the presets defined in the file stage_presets.txt located at the
