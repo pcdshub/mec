@@ -708,9 +708,9 @@ def pulse_picker(rate=5):
 # rolling status definitions
 def ps():
     if (sh2.position == 'OUT'):
-        logger.success('Stopper 2 (CXI) is OUT')
+        logger.success('Stopper 2 (SH2) is OUT')
     elif (sh2.position == 'IN'):
-        logger.critical('Stopper 2 (CXI) is IN')
+        logger.critical('Stopper 2 (SH2) is IN')
     if (sh6.position == 'OUT'):
         logger.success('Stopper 6 (MEC) is OUT')
     elif (sh6.position == 'IN'):
@@ -870,9 +870,9 @@ def pinhole():
 def pinhole_s():
     """ saves current position in pinhole user pv. Uses the User pvs."""
     pinholetgx.put(tgx())
-    pinholehx.put(tc_hexapod.x.get()[2]())
-    pinholehy.put(tc_hexapod.y.get()[2]())
-    pinholehz.put(tc_hexapod.z.get()[2]())
+    pinholehx.put(tc_hexapod.x.get()[2])
+    pinholehy.put(tc_hexapod.y.get()[2])
+    pinholehz.put(tc_hexapod.z.get()[2])
 
 def ceo2():
     """ move to the CeO2 calibrant. Uses the User pvs."""
@@ -884,9 +884,9 @@ def ceo2():
 def ceo2_s():
     """ saves current position in CeO2 user pv. Uses the User pvs."""
     ceo2tgx.put(tgx())
-    ceo2hx.put(tc_hexapod.x.get()[2]())
-    ceo2hy.put(tc_hexapod.y.get()[2]())
-    ceo2hz.put(tc_hexapod.z.get()[2]())
+    ceo2hx.put(tc_hexapod.x.get()[2])
+    ceo2hy.put(tc_hexapod.y.get()[2])
+    ceo2hz.put(tc_hexapod.z.get()[2])
 
 def lab6():
     """ move to the LaB6 calibrant. Uses the User pvs."""
@@ -898,9 +898,9 @@ def lab6():
 def lab6_s():
     """ saves current position in LaB6 user pv. Uses the User pvs."""
     lab6tgx.put(tgx())
-    lab6hx.put(tc_hexapod.x.get()[2]())
-    lab6hy.put(tc_hexapod.y.get()[2]())
-    lab6hz.put(tc_hexapod.z.get()[2]())
+    lab6hx.put(tc_hexapod.x.get()[2])
+    lab6hy.put(tc_hexapod.y.get()[2])
+    lab6hz.put(tc_hexapod.z.get()[2])
 
 def cu():
     """ move to the Cu 5 mic calibrant. Uses the User pvs."""
@@ -912,9 +912,9 @@ def cu():
 def cu_s():
     """ saves current position in Cu 5 mic user pv. Uses the User pvs."""
     cutgx.put(tgx())
-    cuhx.put(tc_hexapod.x.get()[2]())
-    cuhy.put(tc_hexapod.y.get()[2]())
-    cuhz.put(tc_hexapod.z.get()[2]())
+    cuhx.put(tc_hexapod.x.get()[2])
+    cuhy.put(tc_hexapod.y.get()[2])
+    cuhz.put(tc_hexapod.z.get()[2])
 
 def zn():
     """ move to the Zn 2.5 mic calibrant. Uses the User pvs."""
@@ -926,9 +926,9 @@ def zn():
 def zn_s():
     """ saves current position in Zn 2.5 mic user pv. Uses the User pvs."""
     zntgx.put(tgx())
-    znhx.put(tc_hexapod.x.get()[2]())
-    znhy.put(tc_hexapod.y.get()[2]())
-    znhz.put(tc_hexapod.z.get()[2]())
+    znhx.put(tc_hexapod.x.get()[2])
+    znhy.put(tc_hexapod.y.get()[2])
+    znhz.put(tc_hexapod.z.get()[2])
 
 def ti():
     """ move to the ti sample. Uses the User pvs."""
@@ -940,9 +940,9 @@ def ti():
 def ti_s():
     """ saves current position in ti user pv. Uses the User pvs."""
     titgx.put(tgx())
-    tihx.put(tc_hexapod.x.get()[2]())
-    tihy.put(tc_hexapod.y.get()[2]())
-    tihz.put(tc_hexapod.z.get()[2]())
+    tihx.put(tc_hexapod.x.get()[2])
+    tihy.put(tc_hexapod.y.get()[2])
+    tihz.put(tc_hexapod.z.get()[2])
 
 def grid():
     """ move to the grid sample. Uses the User pvs."""
@@ -954,9 +954,9 @@ def grid():
 def grid_s():
     """ saves current position in grid user pv. Uses the User pvs."""
     gridtgx.put(tgx())
-    gridhx.put(tc_hexapod.x.get()[2]())
-    gridhy.put(tc_hexapod.y.get()[2]())
-    gridhz.put(tc_hexapod.z.get()[2]())
+    gridhx.put(tc_hexapod.x.get()[2])
+    gridhy.put(tc_hexapod.y.get()[2])
+    gridhz.put(tc_hexapod.z.get()[2])
 
 def yag():
     """ move to the yag."""
@@ -968,9 +968,9 @@ def yag():
 def yag_s():
     """ saves current position in the yag user pv. Uses the User pvs."""
     yagtgx.put(tgx())
-    yaghx.put(tc_hexapod.x.get()[2]())
-    yaghy.put(tc_hexapod.y.get()[2]())
-    yaghz.put(tc_hexapod.z.get()[2]())
+    yaghx.put(tc_hexapod.x.get()[2])
+    yaghy.put(tc_hexapod.y.get()[2])
+    yaghz.put(tc_hexapod.z.get()[2])
 
 def rc_grid():
     """ move to the ronchi Grid target."""
@@ -1059,7 +1059,7 @@ def talbot_out():
 # target motion definition (TO DO: add target.tweakxy)
 def target_up(n=1):
     """ moves up n spaces, spacing is 3.5mm"""
-    tc_hexapod.y.mv(tc_hexapod.y.get()[2]()+(n*3.5))
+    tc_hexapod.y.mv(tc_hexapod.y.get()[2]+(n*3.5))
 
 def target_down(n=1):
     """ moves down n spaces, spacing is 3.5mm"""
@@ -1103,7 +1103,7 @@ def scan(offset=4., align=0.22, att=1.):
 def scan_n(offset=3., att=.1):
     """ get a white field set of images and then take a set of images with a target in"""
     print('White field, 100 images.')
-    hz_t=tc_hexapod.z.get()[2]()
+    hz_t=tc_hexapod.z.get()[2]
     tc_hexapod.z.mv(hz_t+offset)
     time.sleep(5)
     ref_only(xray_trans=1, xray_num=100, dark=False, visar=False, save=True, daq_end=True, rate=10)
@@ -1119,10 +1119,10 @@ def references(xray_target=0.1):
     x.start_seq(5)
     print('Moving Talbot OUT')
     talbot_out()
-    scan(offset=1., align=tc_hexapod.z.get()[2](), att=xray_target)
+    scan(offset=1., align=tc_hexapod.z.get()[2], att=xray_target)
     print('Moving Talbot IN')
     talbot_in()
-    scan(offset=1., align=tc_hexapod.z.get()[2](), att=xray_target)
+    scan(offset=1., align=tc_hexapod.z.get()[2], att=xray_target)
     x.start_seq(5)
 
 # -- Definitions for the target motion using letters -------------------------
@@ -1558,7 +1558,7 @@ def imaging_system(position = 'OUT'):
 
 def wire_next_row(n=1):
     """ moves up n spaces, spacing is 7 mm """
-    tc_hexapod.y.mv(tc_hexapod.y.get()[2]()+(n*7.0))
+    tc_hexapod.y.mv(tc_hexapod.y.get()[2]+(n*7.0))
 
 def wire_next_column(n=1):
     """ moves next n spaces, spacing is 7 mm """
@@ -1583,7 +1583,7 @@ def next_wire():
         print('You are on the last column...')
         print('Motion not allowed!')
     else:
-        if ((tc_hexapod.y.get()[2]() > 8.0) and (tc_hexapod.y.get()[2]() < 12.4)):
+        if ((tc_hexapod.y.get()[2] > 8.0) and (tc_hexapod.y.get()[2] < 12.4)):
             wire_new_column()
         else:
             wire_next_row()
@@ -1645,7 +1645,7 @@ def spl_focus_alignment():
     pin()
     print('Waiting 10s for the pin to move IN')
     time.sleep(10)
-    tc_hexapod.y.mv(tc_hexapod.y.get()[2]()-3.0)
+    tc_hexapod.y.mv(tc_hexapod.y.get()[2]-3.0)
     fw4set(position = 6)
     imaging_system('IN')
     print('Ready to send the focused beam')
