@@ -301,7 +301,6 @@ def ref_only(xray_trans=1, xray_num=10, shutters=False, dark=0, daq_end=True, ca
         dark       : default is 0, we do not record a dark run before the reference
         shutters   : default is False, we do not need to close the shutters for references
         calibrant  : if not empty, will move to specified calibrant and take calibration run only
-
         visar      : True if you want to take visar references
         daq_end    : close the run at the end of a shot. Set to True allows a user to see the result of the shot for longer.
         rate       : rate used to take the reference, it is set to 1 by default bu is changed depending on the options (visar, calib)
@@ -689,6 +688,14 @@ def pulse_picker(rate = 5):
 
 # rolling status definitions
 def ps():
+    if (mec_bxl_valve.position == 'OUT'):
+        logger.success('Gatevalve BXL:VGC:01 (XRT DCO) is OUT')
+    elif (mec_bxl_valve.position == 'IN'):
+        logger.critical('Gatevalve BXL:VGC:01 (XRT DCO) is IN')
+    if (mec_hxm_valve.position == 'OUT'):
+        logger.success('Gatevalve HXN:VGC:01 (XRT S6) is OUT')
+    elif (mec_hxm_valve.position == 'IN'):
+        logger.critical('Gatevalve HXM:VGC:01 (XRT S6) is IN')
     if (sh2.position == 'OUT'):
         logger.success('Stopper 2 (SH2) is OUT')
     elif (sh2.position == 'IN'):
@@ -714,7 +721,10 @@ def ps():
         logger.success('Yag 3 is OUT')
     elif (yag3.position == 'YAG'):
         logger.critical('Yag 3 is IN')
-    print("pulse picker : "+mec_pulsepicker.position)
+    if (pp.get()[0] == 'CLOSE'):
+        logger.critical('Pulse Picker is CLOSED.')
+    else:
+        logger.success('Pulse Picker is OPEN.')
     print("at1l0 transmission : " +str(at1l0.position))
     print("at2l0 transmission : " +str(at2l0.position))
     print("Si transmission : "+str(SiT()))
@@ -1677,7 +1687,7 @@ def spl_shot_readiness():
 def uxi_shot(save_run=True, target_out_dark=10, target_out_white=10, target_in_white=10, post_dark=5, offset = -0.5, lpl_ener_val=1.0, timing_val=0.0e-9, arms_val='all'):
     '''
     Description:
-
+        Creates a complexe sequence of dark/white fields with and without the target when using the UXI detectors.
     IN:
         save_run            : True if run is to be saved. Default is True.
         target_out_dark     : number of dark images with target OUT. Default is 10.
@@ -1689,7 +1699,7 @@ def uxi_shot(save_run=True, target_out_dark=10, target_out_white=10, target_in_w
         arms_val            : laser arms to shoot. Default is 'all'.
         offset              : offset in mm to move the sample from its current position. Default is -0.5mm on hexapod Z.
     OUT:
-        run the plan
+        Runs the complex sequence, saving 4 runs, one with dark and white and target out, then white with target in, driven shot and dark after shot.
     '''
     # target OUT
     logger.critical('Moving target OUT for {} dark and {} white fields.'.format(target_out_dark, target_out_white))
@@ -1727,5 +1737,3 @@ def digitizer_plot(xmin=0, xmax=32000):
     plt.legend(loc = 'upper right')
     plt.tight_layout()
     plt.show()
-
-
