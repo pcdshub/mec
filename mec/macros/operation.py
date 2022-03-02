@@ -700,7 +700,7 @@ def pulse_picker(rate = 5):
         IN:
             rate : default 5 Hz, but can be anything between 0.5, 1, 5, 10, 30, 60, 120, 360 Hz.
         OUT:
-            set a sequence in teh event sequence qnd run it
+            set a sequence in the event sequence and run it
         '''
         # reset the mode for the pp
         pp.reset()
