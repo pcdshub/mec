@@ -2,6 +2,8 @@ import time
 import numpy as np
 # used to color the output text
 from colorama import init, Fore, Back, Style
+import matplotlib as plt
+from matplotlib.ticker import (MultipleLocator, FormatStrFormatter, AutoMinorLocator)
 
 from datetime import datetime
 import matplotlib.pyplot as plt
@@ -59,7 +61,6 @@ tg_imaging_y=Motor('MEC:PPL:MMN:22', name='tg_imaging_y')
 tg_imaging_z=Motor('MEC:TC1:MMS:22', name='tg_imaging_z')
 
 delay_line=Motor('MEC:USR:MMS:25', name='delay_line')
-#pp=EpicsSignal('MEC:HXM:MMS:18:SET_SE')
 be_lens_stack=EpicsSignal("MEC:XT2:XFLS.VAL")
 
 # GMD PV values for the FEL pulse energy
@@ -99,6 +100,11 @@ gaia_dgbox = EpicsSignal('MEC:LAS:DDG:06:cDelayAO')
 fw4inc = EpicsSignal('MEC:LAS:FW:04:IncPos.PROC')
 fw4dec = EpicsSignal('MEC:LAS:FW:04:DecPos.PROC')
 fw4pos = EpicsSignal('MEC:LAS:FW:04:Position')
+
+
+# digitizer 
+dg0_wvfm = EpicsSignal("MEC:QADC:01:OUT0")
+dg1_wvfm = EpicsSignal("MEC:QADC:01:OUT1")
 
 ### All the user pvs we need for the macro's below:
 pinhx=EpicsSignal('MEC:NOTE:DOUBLE:01')
@@ -1701,3 +1707,25 @@ def uxi_shot(save_run=True, target_out_dark=10, target_out_white=10, target_in_w
     logger.success('Target post shot for {} dark fields.'.format(post_dark))
     ref_only(xray_trans=1, xray_num=0, shutters=False, dark=post_dark, daq_end=True, calibrant='', rate=1, visar=True, save=save_run, slow_cam=False)
     
+def digitizer_plot(xmin=0, xmax=32000):
+    '''
+    Range to zoom:
+        xmin = 5400
+        xmax = 6400
+    '''
+    fig, ax = plt.subplots()
+    ax.plot(dg1_wvfm.get(), label='Time Tool', color='Green') 
+    ax.plot(dg0_wvfm.get(), label='Upstream TCC', color='Blue')
+    ax.set_xlabel('Samples (#)')
+    ax.set_ylabel('Voltage (V)')
+    ax.set_xlim(xmin, xmax)
+#    ax.xaxis.set_major_locator(MultipleLocator(50))
+#    ax.xaxis.set_minor_locator(MultipleLocator(10))
+#    ax.yaxis.set_major_locator(MultipleLocator(0.1))
+#    ax.yaxis.set_minor_locator(MultipleLocator(0.01))
+#    plt.grid(True)
+    plt.legend(loc = 'upper right')
+    plt.tight_layout()
+    plt.show()
+
+
