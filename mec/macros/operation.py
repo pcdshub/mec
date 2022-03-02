@@ -390,52 +390,6 @@ def ref_only(xray_trans=1, xray_num=10, shutters=False, dark=False, daq_end=True
     # restore laser rep rate in case the next action does not involve the use of the following scripts (like shots from the hutch)
     x.nsl._config['rate']=10
 
-# method to perform XRD calibration by moving to the appropriate target and save a daq run
-def xray_calib(xray_trans=0.01, xray_num=10, calibrant='CeO2', rate=1, save=False):
-    '''
-    Description: script to take xray only events performing an XRD calibration on calib target.
-    IN:
-        xray_trans : decimal value of the xray transmission
-        xray_num   : number of x-rays to send on target
-        calibrant  : values are 'CeO2', 'LaB6', 'Ti'
-        rate       : set the configuration rate to run the DAQ, 1 is when VISAR is in the DAQ or you want to move in between shots, otherwise, it can be anything else
-        save       : True to save to the DAQ, False otherwise
-    OUT:
-        execute the plan
-    '''
-    # start by moving on target
-    if ((calibrant == 'CeO2') or (calibrant == 'ceo2')):
-        ceo2()
-        msg_calib_target = 'on CeO2'
-    if ((calibrant == 'LaB6') or (calibrant == 'lab6')):
-        lab6()
-        msg_calib_target = 'on LaB6'
-    if ((calibrant == 'Ti') or (calibrant == 'ti')):
-        ti()
-        msg_calib_target = 'on Ti'
-    if ((calibrant == 'Cu') or (calibrant == 'cu')):
-        cu()
-        msg_calib_target = 'on Cu 5 mic'
-    if ((calibrant == 'Zn') or (calibrant == 'zn')):
-        zn()
-        msg_calib_target = 'on Zn 2.5 mic'
-    # use 10Hz rep rate to get calibration shots only when visar is not in the DAQ
-    # use 1Hz rep rate to get calibration shots only when visar is in the DAQ
-    x.nsl._config['rate']=rate
-    x.nsl.predark=1
-    x.nsl.prex=xray_num
-    x.nsl.during=0
-    SiT(xray_trans)
-    p=x.nsl.shot(record=save, ps=False)
-    RE(p)
-    RunNumber = get_run_number(hutch='mec', timeout=10)
-    # experimentName: global variable fro mec.beamline:
-    mecl = elog.ELog({'experiment':experimentName}, user='mecopr', pw=pickle.load(open('/reg/neh/operator/mecopr/mecpython/pulseshaping/elogauth.p', 'rb')))
-    msg = '{} x-ray only shots at {:.1f}% {}.'.format(xray_num, 100.0 * xray_trans, msg_calib_target)
-    mecl.post(msg, run=RunNumber, tags=['xray', 'calibration', calibrant])
-    # until we can easily know if the VISAR is in the DAQ, it forces the rate back to 1 Hz
-    x.nsl._config['rate']=1
-
 # method to perform a pump-probe LPL shot
 def optical_shot(shutter_close=[1, 2, 3, 4, 5, 6], lpl_ener=1.0, timing=0.0e-9, xray_threshold=0.1, xray_trans=1, prex=0, save=True, daq_end=True, msg='', ps_opt=True, arms='all', tags_words=['optical', 'sample'], uxi=False, auto_trig=False, auto_charge=False, visar=True, slow_cam=False, debug=True):
     '''
