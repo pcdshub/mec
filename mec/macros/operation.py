@@ -286,13 +286,13 @@ def visar_mode(status = 'ready'):
 calibrant_list = ['CeO2', 'ceo2', 'LaB6', 'lab6', 'Ti', 'ti', 'Cu', 'cu', 'Zn', 'zn']
 
 # method to save multiple xray only shotsi and/or visar references
-def ref_only(xray_trans=1, xray_num=10, shutters=False, dark=False, daq_end=True, calibrant='', rate=1, visar=False, save=False, slow_cam=False):
+def ref_only(xray_trans=1, xray_num=10, shutters=False, dark=0, daq_end=True, calibrant='', rate=1, visar=False, save=False, slow_cam=False):
     '''
     Description: script to take xray only events and/or VISAR references.
     IN:
         xray_trans : decimal value of the xray transmission
         xray_num   : number of x-rays to send on target
-        dark       : default is False, we do not record a dark run before the reference
+        dark       : default is 0, we do not record a dark run before the reference
         shutters   : default is False, we do not need to close the shutters for references
         calibrant  : if not empty, will move to specified calibrant and take calibration run only
 
@@ -361,8 +361,8 @@ def ref_only(xray_trans=1, xray_num=10, shutters=False, dark=False, daq_end=True
             msg = '{} x-ray only, calibration shots at {:.4f}% and {} visar reference image(s) {}.'.format(xray_num, 100.0 * xray_trans, xray_num, msg_calib_target)
 
     # check if a dark is necessary
-    if (dark == True):
-         x.nsl.predark=1
+    if (dark > 0):
+         x.nsl.predark=dark
          print('Taking a dark reference image.')
     else:
          x.nsl.predark=0
@@ -374,7 +374,7 @@ def ref_only(xray_trans=1, xray_num=10, shutters=False, dark=False, daq_end=True
     else:
          x.nsl.shutters=[]
          print('Shutters are left open.')
-        
+    pp.flipflop() 
     x.nsl.prex=xray_num
     x.nsl.during=0
     SiT(xray_trans)
@@ -1667,3 +1667,37 @@ def spl_shot_readiness():
         print('"WE ARE READY FOR A SHOT ON TARGET"')
         print('"ARE ALL DIAGNOSTICS READY FOR TRIGGER?"')
 
+
+def uxi_shot(save_run=True, target_out_dark=10, target_out_white=10, target_in_white=10, post_dark=5, offset = -0.5, lpl_ener_val=1.0, timing_val=0.0e-9, arms_val='all'):
+    '''
+    Description:
+
+    IN:
+        save_run            : True if run is to be saved. Default is True.
+        target_out_dark     : number of dark images with target OUT. Default is 10.
+        target_out_white    : number of white field images with target OUT. Default is 10.
+        target_in_white     : number of white field images with target IN. Default is 10.
+        post_dark           : number of dark images after the driven shot. Default is 5.
+        lpl_ener_val        : LPL total energy output. Default 1.0 (full energy).
+        timing_val          : delay between the LPL and the FEL. Default is 0.0e-9 s.
+        arms_val            : laser arms to shoot. Default is 'all'.
+        offset              : offset in mm to move the sample from its current position. Default is -0.5mm on hexapod Z.
+    OUT:
+        run the plan
+    '''
+    # target OUT
+    logger.critical('Moving target OUT for {} dark and {} white fields.'.format(target_out_dark, target_out_white))
+    target_save()
+    tc_hexapod.z.umvr(offset)
+    ref_only(xray_trans=1, xray_num=target_out_white, shutters=False, dark=target_out_dark, daq_end=True, calibrant='', rate=0.5, visar=True, save=save_run, slow_cam=False)
+    # target IN 
+    logger.success('Moving target IN for {} white fields.'.format(target_in_white))
+    target_return()
+    ref_only(xray_trans=1, xray_num=target_in_white, shutters=False, dark=0, daq_end=True, calibrant='', rate=0.5, visar=True, save=save_run, slow_cam=False)
+    # take the driven shot
+    logger.success('Preparing for laser driven shot at {} % of the laser energy and {} ns delay with the FEL.'.format(lpl_ener_val*100., timing_val*1.0e9))
+    optical_shot(shutter_close=[1, 2, 3, 4, 5, 6], lpl_ener=lpl_ener_val, timing=timing_val, xray_threshold=0.1, xray_trans=1, prex=0, save=save_run, daq_end=True, msg='', ps_opt=True, arms=arms_val, tags_words=['optical', 'sample'], uxi=True, auto_trig=True, auto_charge=True, visar=True, slow_cam=False, debug=True) 
+    # post X-ray only
+    logger.success('Target post shot for {} dark fields.'.format(post_dark))
+    ref_only(xray_trans=1, xray_num=0, shutters=False, dark=post_dark, daq_end=True, calibrant='', rate=1, visar=True, save=save_run, slow_cam=False)
+    
