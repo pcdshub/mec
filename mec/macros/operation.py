@@ -15,6 +15,7 @@ from mecps import *
 from pcdsdevices.epics_motor import Motor
 
 from mec.db import *
+from mec.db import mec_pulsepicker as pp
 from mec.beamline import *
 from mec.devices import *
 from mec.laser import *
@@ -58,7 +59,7 @@ tg_imaging_y=Motor('MEC:PPL:MMN:22', name='tg_imaging_y')
 tg_imaging_z=Motor('MEC:TC1:MMS:22', name='tg_imaging_z')
 
 delay_line=Motor('MEC:USR:MMS:25', name='delay_line')
-pp=EpicsSignal('MEC:HXM:MMS:18:SET_SE')
+#pp=EpicsSignal('MEC:HXM:MMS:18:SET_SE')
 be_lens_stack=EpicsSignal("MEC:XT2:XFLS.VAL")
 
 # GMD PV values for the FEL pulse energy
@@ -690,20 +691,34 @@ def spl_shot(nshot=1, gaia_offset=0., delay=0.0e-9, xray_trans=1, msg='', tags_w
 
 
 
-alignment_mode = [[168, 22, 0, 0],[169,  2, 0, 0]]
+sync_markers = {0.5:0, 1:1, 5:2, 10:3, 30:4, 60:5, 120:6, 360:7}
 
-def pulse_picker(rate=5):
+def pulse_picker(rate = 5):
+        '''
+        Description:
+            Set the event sequencer to allow for the pulse picker to run at a dedicated rate while the DAQ is also set to run (for the cameras to trigger).
+        IN:
+            rate : default 5 Hz, but can be anything between 0.5, 1, 5, 10, 30, 60, 120, 360 Hz.
+        OUT:
+            set a sequence in teh event sequence qnd run it
+        '''
         # reset the mode for the pp
-        pp.put(0)
+        pp.reset()
         # set the flip/flop mode
-        pp.put(2)
+        pp.flipflop()
+        # calculate the delta beam coresponding to the rate
+        bd = int(120/rate) # Beam deltas per laser shot
+        # create a simple sequence based on the rate qnd devices of interest: pulse picker and DAQ only
+        alignment_mode = [[168, bd-2, 0, 0],[169,  2, 0, 0]]
+        print('Using simple sequence: {}'.format(alignment_mode))
+        # set the syn ;qrker in teh event sequencer
+        sync_mark = int(sync_markers[rate])
+        seq.sync_marker.put(sync_mark)
         # push the sequence
         seq.sequence.put_seq(alignment_mode)
         seq.play_mode.put(2)
         seq.start()
-    
-
-
+        logger.success('Pulse Picker running at {} Hz.'.format(rate))
 
 # rolling status definitions
 def ps():
