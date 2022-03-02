@@ -437,7 +437,7 @@ def xray_calib(xray_trans=0.01, xray_num=10, calibrant='CeO2', rate=1, save=Fals
     x.nsl._config['rate']=1
 
 # method to perform a pump-probe LPL shot
-def optical_shot(shutter_close=[1, 2, 3, 4, 5, 6], lpl_ener=1.0, timing=0.0e-9, xray_threshold=0.1, xray_trans=1, prex=0, daq_end=True, msg='', arms='all', tags_words=['optical', 'sample'], auto_trig=False, auto_charge=False, visar=True, slow_cam=False, debug=True):
+def optical_shot(shutter_close=[1, 2, 3, 4, 5, 6], lpl_ener=1.0, timing=0.0e-9, xray_threshold=0.1, xray_trans=1, prex=0, save=True, daq_end=True, msg='', ps_opt=True, arms='all', tags_words=['optical', 'sample'], uxi=False, auto_trig=False, auto_charge=False, visar=True, slow_cam=False, debug=True):
     '''
     Description: script to shoot the optical laser and time it with the xrays. It automatically push to the elog the laser energy, the timing and the xray SiT transmission.
     IN:
@@ -447,10 +447,13 @@ def optical_shot(shutter_close=[1, 2, 3, 4, 5, 6], lpl_ener=1.0, timing=0.0e-9, 
         xray_threshold  : threshold energy in mJ below which the shot is NOT proceeding and loop until FEL energy is back 
         xray_trans      : X ray transmission, meaning 1. = 100%, 0.5 = 50%
         prex            : when True, allows to take one Xray or visar reference
+        save            : save the run when True (default).
         daq_end         : if True, it will allow the DAQ to keep the data on screen until daq.disconnect() is used.
         msg             : message to post to the elog
+        ps_opt          : if True, enable the optimization of the pulse shaping routine
         arms            : all, ABGH, EFIJ are valid
         tags_words      : accompagnying tags to the elog
+        uxi             : when True, it sets the repetition rate of the sequencer to 0.5 Hz so that the pulse picker delta beam are properly calculated
         auto_trig       : True to make sure the triggers are enabled, False otherwise (simulation test for example).False by default.
         auto_charge     : True to charge automatically the PFN. False by default.
         visar           : True to check that the VISAR triggers are set properly.
@@ -504,8 +507,12 @@ def optical_shot(shutter_close=[1, 2, 3, 4, 5, 6], lpl_ener=1.0, timing=0.0e-9, 
         print('NS slicer and Lamps trigger buttons are Enabled.')
     else:
         print('NS slicer and Lamps trigger buttons are not being checked by the script.')
-    # to setup the plan for a driven shot, and make sure the rate for the drive laser is 10 Hz
-    x.nsl._config['rate']=10
+    if (uxi == True):
+        # to setup the plan for a driven shot where the UXI detector are being used
+        x.nsl._config['rate']=0.5
+    else:
+        # to setup the plan for a driven shot, and make sure the rate for the drive laser is 10 Hz
+        x.nsl._config['rate']=10
     # force the use of the shutters as you are driving the target
     x.nsl.shutters=shutter_close
     x.nsl.predark=0
@@ -513,9 +520,9 @@ def optical_shot(shutter_close=[1, 2, 3, 4, 5, 6], lpl_ener=1.0, timing=0.0e-9, 
     x.nsl.during=1
     # to set the plan with the new configuration
     if (daq_end == True):
-        p=x.nsl.shot(record=True, ps=True, end_run=True)
+        p=x.nsl.shot(record=save, ps=ps_opt, end_run=True)
     if (daq_end == False):
-        p=x.nsl.shot(record=True, ps=True, end_run=False)
+        p=x.nsl.shot(record=save, ps=ps_opt, end_run=False)
     # loop before the shot to check that FEL pulse energy is above a threshold: if the FEL drops within 10 sec, then we cannot do much with this moethod
     # getting the energy value once to evaluate what to do otherwise might be using a different pulse. Still might be unprecise since this is a BLD value which is refreshed faster than the epics feedback I guess.
     fel_ener = fel_pulse_energy()
