@@ -184,18 +184,18 @@ spl_slicer_evr_code = EpicsSignal('LAS:MEC:EVR:03:TRIG2:TEC')
 spl_slicer_evr_btn = EpicsSignal('LAS:MEC:EVR:03:TRIG2:TCTL')
 
 # getting EVR button status for the LPL slicer and lamps
-#lpl_slicer_evr_btn = EpicsSignal('EVR:MEC:USR01:TRIG7:TCTL')
-#lpl_lamps_evr_btn = EpicsSignal('EVR:MEC:USR01:TRIG6:TCTL')
+lpl_slicer_evr_btn = EpicsSignal('MEC:LAS:EVR:01:TRIG8:TCTL')
+lpl_lamps_evr_btn = EpicsSignal('MEC:LAS:EVR:01:TRIG7:TCTL')
 
 # getting charging status from the PFN GUI
 lpl_charge_status=EpicsSignal('MEC:PFN:CHARGE_OK')
 lpl_charge_btn=EpicsSignal('MEC:PFN:START_CHARGE')
 
 # getting event code and EVR button status for the VISAR laser and streak cameras
-visar_streak_evt_code = EpicsSignal('EVR:MEC:USR01:TRIG4:TEC')
-visar_streak_evr_btn = EpicsSignal('EVR:MEC:USR01:TRIG4:TCTL')
-visar_laser_evt_code = EpicsSignal('EVR:MEC:USR01:TRIGA:TEC')
-visar_laser_evr_btn = EpicsSignal('EVR:MEC:USR01:TRIGA:TCTL')
+visar_streak_evt_code = EpicsSignal('MEC:LAS:EVR:01:TRIG9:TEC')
+visar_streak_evr_btn = EpicsSignal('MEC:LAS:EVR:01:TRIG9:TCTL')
+visar_laser_evt_code = EpicsSignal('MEC:LAS:EVR:01:TRIGA:TEC')
+visar_laser_evr_btn = EpicsSignal('MEC:LAS:EVR:01:TRIGA:TCTL')
 
 # event seauencer control
 evt_seq_btn = EpicsSignal('ECS:SYS0:6:PLYCTL')
