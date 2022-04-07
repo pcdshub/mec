@@ -30,7 +30,7 @@ from mec.visar_bed import *
 # using a function from Tyler's timing module for the VISAR streaks
 #from mec.mec_timing import TimingChannel
 
-from ophyd import EpicsSignal 
+from ophyd import EpicsSignal
 
 # force color rest at the end of any print statement
 init(autoreset = True)
@@ -55,6 +55,10 @@ tgy=EpicsSignal('MEC:PPL:MMN:07')
 tgy_rbv=EpicsSignal('MEC:PPL:MMN:07.RBV')
 tgz=EpicsSignal('MEC:PPL:MMN:08')
 tgz_rbv=EpicsSignal('MEC:PPL:MMN:08.RBV')
+
+# X493 attenuator motor definition
+att_trans=Motor('MEC:USR:MMS:20', name='att_trans')
+att_rot=EpicsSignal('MEC:PPL:MMN:20')
 
 tg_imaging_x=Motor('MEC:PPL:MMN:16', name='tg_imaging_x')
 tg_imaging_y=Motor('MEC:PPL:MMN:22', name='tg_imaging_y')
@@ -102,7 +106,7 @@ fw4dec = EpicsSignal('MEC:LAS:FW:04:DecPos.PROC')
 fw4pos = EpicsSignal('MEC:LAS:FW:04:Position')
 
 
-# digitizer 
+# digitizer
 dg0_wvfm = EpicsSignal("MEC:QADC:01:OUT0")
 dg1_wvfm = EpicsSignal("MEC:QADC:01:OUT1")
 
@@ -152,10 +156,20 @@ cuhy=EpicsSignal('MEC:NOTE:DOUBLE:18')
 cuhz=EpicsSignal('MEC:NOTE:DOUBLE:19')
 cutgx=EpicsSignal('MEC:NOTE:DOUBLE:20')
 
-zntgx=EpicsSignal('MEC:NOTE:DOUBLE:53')
-znhx=EpicsSignal('MEC:NOTE:DOUBLE:54')
-znhy=EpicsSignal('MEC:NOTE:DOUBLE:55')
-znhz=EpicsSignal('MEC:NOTE:DOUBLE:56')
+
+# zntgx=EpicsSignal('MEC:NOTE:DOUBLE:53')
+# znhx=EpicsSignal('MEC:NOTE:DOUBLE:54')
+# znhy=EpicsSignal('MEC:NOTE:DOUBLE:55')
+# znhz=EpicsSignal('MEC:NOTE:DOUBLE:56')
+
+epics_chi = EpicsSignal('MEC:NOTE:DOUBLE:50')
+epics_phi = EpicsSignal('MEC:NOTE:DOUBLE:51')
+epics_omega = EpicsSignal('MEC:NOTE:DOUBLE:52')
+epics_du = EpicsSignal('MEC:NOTE:DOUBLE:53')
+epics_dv = EpicsSignal('MEC:NOTE:DOUBLE:54')
+epics_dw = EpicsSignal('MEC:NOTE:DOUBLE:55')
+epics_sleep_time = EpicsSignal('MEC:NOTE:DOUBLE:56')
+
 
 targetsavehx=EpicsSignal('MEC:NOTE:DOUBLE:37')
 targetsavehy=EpicsSignal('MEC:NOTE:DOUBLE:38')
@@ -169,13 +183,13 @@ tt_delay_motor=Motor('MEC:LAS:MMN:19', name='tt_delay_line')
 spl_slicer_evr_code = EpicsSignal('LAS:MEC:EVR:03:TRIG2:TEC')
 spl_slicer_evr_btn = EpicsSignal('LAS:MEC:EVR:03:TRIG2:TCTL')
 
-# getting EVR button status for the LPL slicer and lamps 
-lpl_slicer_evr_btn = EpicsSignal('EVR:MEC:USR01:TRIG7:TCTL')
-lpl_lamps_evr_btn = EpicsSignal('EVR:MEC:USR01:TRIG6:TCTL')
+# getting EVR button status for the LPL slicer and lamps
+#lpl_slicer_evr_btn = EpicsSignal('EVR:MEC:USR01:TRIG7:TCTL')
+#lpl_lamps_evr_btn = EpicsSignal('EVR:MEC:USR01:TRIG6:TCTL')
 
 # getting charging status from the PFN GUI
-lpl_charge_status=EpicsSignal('MEC:PFN:CHARGE_OK') 
-lpl_charge_btn=EpicsSignal('MEC:PFN:START_CHARGE') 
+lpl_charge_status=EpicsSignal('MEC:PFN:CHARGE_OK')
+lpl_charge_btn=EpicsSignal('MEC:PFN:START_CHARGE')
 
 # getting event code and EVR button status for the VISAR laser and streak cameras
 visar_streak_evt_code = EpicsSignal('EVR:MEC:USR01:TRIG4:TEC')
@@ -234,7 +248,7 @@ def digitizer_gui():
 def load_presets():
     '''
     Description: load the presets defined in the file stage_presets.txt located at the
-    path /reg/g/pcds/pyps/apps/hutch-python/mec/mec/macros/. You need to login with your 
+    path /reg/g/pcds/pyps/apps/hutch-python/mec/mec/macros/. You need to login with your
     own unix account to modify this file.
     '''
 
@@ -263,7 +277,7 @@ def visar_mode(status = 'ready'):
     laser and streak camera EVR. It will force the evr button to be enabled.
 
     IN:
-        status: 'ready' for laser shot (182), 'align' for alignment mode (43 and 44), 'daq' for 
+        status: 'ready' for laser shot (182), 'align' for alignment mode (43 and 44), 'daq' for
         169 used to control the VISAR in the daq, so used for both alignment and on-shot, 'move' for disabling the visar light only when ;oving from target to target
     OUT:
         set the EVR to the right value
@@ -286,7 +300,7 @@ def visar_mode(status = 'ready'):
         visar_laser_evr_btn.put(1)
     if (status == 'move'):
         visar_laser_evr_btn.put(0)
-        
+
 
 # set the calibrant list used on the MEC calibration cartridge
 calibrant_list = ['CeO2', 'ceo2', 'LaB6', 'lab6', 'Ti', 'ti', 'Cu', 'cu', 'Zn', 'zn']
@@ -372,14 +386,14 @@ def ref_only(xray_trans=1, xray_num=10, shutters=False, dark=0, daq_end=True, ca
     else:
          x.nsl.predark=0
          print('No dark reference image taken.')
-        
+
     # check if shutters are necessary
     if (shutters == True):
          x.nsl.shutters=[1, 2, 3, 4, 5, 6]
     else:
          x.nsl.shutters=[]
          print('Shutters are left open.')
-    pp.flipflop() 
+    pp.flipflop()
     x.nsl.prex=xray_num
     x.nsl.during=0
     SiT(xray_trans)
@@ -403,7 +417,7 @@ def optical_shot(shutter_close=[1, 2, 3, 4, 5, 6], lpl_ener=1.0, timing=0.0e-9, 
         shutter_close   : array of shutters in front of viewport to close during laser shots
         lpl_ener        : waveplate settings for the lpl energy, decimal value, meaning 1. = 100%, 0.5 = 50%
         timing          : moves absolute, in s
-        xray_threshold  : threshold energy in mJ below which the shot is NOT proceeding and loop until FEL energy is back 
+        xray_threshold  : threshold energy in mJ below which the shot is NOT proceeding and loop until FEL energy is back
         xray_trans      : X ray transmission, meaning 1. = 100%, 0.5 = 50%
         prex            : when True, allows to take one Xray or visar reference
         save            : save the run when True (default).
@@ -503,7 +517,7 @@ def optical_shot(shutter_close=[1, 2, 3, 4, 5, 6], lpl_ener=1.0, timing=0.0e-9, 
     x.start_seq(1)
     # restore the number of prex shots after the driven shot. Could restore the entire default config at some point.
     x.nsl.prex=0
-    
+
 
 # For delay line in the chamber:
 # delay_line_t0 to change manually for now
@@ -512,15 +526,15 @@ delay_line_t0 = 36.616
 # mm/ps
 delay_line_calib = 0.149896229
 
-def spl_timing_save_t0(): 
+def spl_timing_save_t0():
     '''
     Description : saving the current VITARA position to a PV
     '''
     global spl_timing_tmp
-    spl_timing_tmp = spl_vitara_pv.put(spl_vitara.get()) 
+    spl_timing_tmp = spl_vitara_pv.put(spl_vitara.get())
     print('The timing is set at {} ns.'.format(spl_timing_tmp))
 
-def spl_timing(mono='out', timing=0.0e-9): 
+def spl_timing(mono='out', timing=0.0e-9):
     '''
     Description : setting a new pump-probe delay
     IN          :
@@ -557,7 +571,7 @@ def spl_mode(mode='alignment'):
     if (mode == 'alignment'):
         spl_uniblitz_65mm.put(1)
         # waiting for the 65mm uniblitz to open
-        time.sleep(0.2) 
+        time.sleep(0.2)
         print('Setting polarity on 65 mm uniblitz to open (positive).')
         spl_uniblitz_6mm.put(1)
         print('Setting polarity on 6 mm uniblitz to open (positive).')
@@ -573,7 +587,7 @@ def spl_mode(mode='alignment'):
     if (mode == 'single_shot'):
         spl_uniblitz_6mm.put(0)
         # waiting for the 6mm uniblitz to close\
-        time.sleep(0.2) 
+        time.sleep(0.2)
         print('Setting polarity on 6 mm uniblitz to close (negative).')
         spl_uniblitz_65mm.put(0)
         print('Setting polarity on 65 mm uniblitz to close (negative).')
@@ -582,7 +596,7 @@ def spl_mode(mode='alignment'):
     # force enable the uniblitz triggering
     spl_uniblitz_evr_btn.put(1)
     print('Force enabling the triggering of the uniblitz.')
-    
+
 
 spl_sequence = [[177, 12, 0, 0],
                 [168, 10, 0, 0],
@@ -609,16 +623,16 @@ def spl_shot(nshot=1, gaia_offset=0., delay=0.0e-9, xray_trans=1, msg='', tags_w
     SiT(xray_trans)
     # set the uniblitz mode to provide 5Hz but protected by the uniblitz. Used for all DAQ modes.
     spl_mode(mode='single_shot')
-    time.sleep(0.2) 
+    time.sleep(0.2)
     gaia_timing_offset(gaia_offset)
-    # set probe timing    
+    # set probe timing
     spl_timing(timing=delay)
     # check the trigger status
     if (auto_trig == True):
         # look at the event code
         spl_slicer_evr_code.put(176)
         # sleep time necessary to make sure the trigger is properly enabled
-        time.sleep(0.2) 
+        time.sleep(0.2)
         if (spl_slicer_evr_btn.get() == 0):
             spl_slicer_evr_btn.put(1)
         print('SPL slicer trigger button is Enabled.')
@@ -638,7 +652,7 @@ def spl_shot(nshot=1, gaia_offset=0., delay=0.0e-9, xray_trans=1, msg='', tags_w
         # to run the plan
         RE(p)
         # make sure the event sequencer is getting ready for the 'continuous' shot mode'
-        time.sleep(0.2) 
+        time.sleep(0.2)
         #x.start_seq(5)
     else:
         shutter1.close()
@@ -786,7 +800,7 @@ def rs():
 #            time.sleep(0.2)
 #        print('out', motor, motor.get())
 #    print('Motor {} reached destination.'.format(motor))
-    
+
 def tg_pin():
     arr = load_presets()
     # force going down before any motion
@@ -988,7 +1002,7 @@ def xray_pm():
 def diode_air():
     """ moves the 500mm stage to the in air Diode position in user pv."""
     s500mm.put(diode500mm.get())
-    
+
 def diode_air_s():
     """ Saves current position of the diode in user pvs."""
     diode500mm.put(s500mm.get())
@@ -996,7 +1010,7 @@ def diode_air_s():
 def spectro_air():
     """ moves the 500mm stage to the in air spectrometer position in user pv."""
     s500mm.put(spectro500mm.get())
-    
+
 def spectro_air_s():
     """ Saves current position of the in air spectrometer in user pvs."""
     spectro500mm.put(s500mm.get())
@@ -1004,7 +1018,7 @@ def spectro_air_s():
 def gige4():
     """ moves the 500mm stage to the in air gige4 position in user pv."""
     s500mm.put(gige4500mm.get())
-    
+
 def gige4_s():
     """ Saves current position of the gige4 in user pvs."""
     gige4500mm.put(s500mm.get())
@@ -1012,7 +1026,7 @@ def gige4_s():
 def zyla():
     """ moves the 500mm stage to the NEO position in user pv."""
     s500mm.put(zyla500mm.get())
-    
+
 def zyla_s():
     """ Saves current position of NEO in user pvs."""
     zyla500mm.put(s500mm.get())
@@ -1033,7 +1047,7 @@ def gaia_timing_offset(offset = 0):
         print('GAIA is timed IN.')
     else:
         print('GAIA is timed off by {} ns.'.format(offset))
-        
+
 
 def gaia_detune():
     """ Function to offset the gaia timing by 100 ns to not amplify MPA anymore """
@@ -1129,22 +1143,22 @@ msg_log_target = ''
 
 def move_to_target(config='colinear', frame_cfg=[1, 'F1', 1, 'F2', 1, 'F3'], frame=1, target='A1', visar_disable=True):
     '''
-    Description: script to move to a predefined target in the target holder. Assuming 
-    for now that columns are letters, and raws are numbers. Columns start from A and 
-    finish at I from left to right and raws start from 1 to 7 from top to bottom. All 
+    Description: script to move to a predefined target in the target holder. Assuming
+    for now that columns are letters, and raws are numbers. Columns start from A and
+    finish at I from left to right and raws start from 1 to 7 from top to bottom. All
     these while looking at the target holder from the back (opposite view from questar 1).
 
-    Since every target frame is position a few 100um differt due to screw slop, there are two 
-    epics user pv that can be set as a correction for each target. These corrections should be 
+    Since every target frame is position a few 100um differt due to screw slop, there are two
+    epics user pv that can be set as a correction for each target. These corrections should be
     small (<1mm), and are best reset when going to a different frame. They are the user PVs
     57 and 58.
 
     IN:
         config          : set the experimental configuration to use. It will enable or disable arguments accordingly.
-        frame_cfg       : the configuration of the frames on the target holder as viewed from 
-                          the back, meaning the opposite view of Q1. TO DO: need to confirm size 
+        frame_cfg       : the configuration of the frames on the target holder as viewed from
+                          the back, meaning the opposite view of Q1. TO DO: need to confirm size
                           of the half-U frame.
-        frame           : the number of the frame where the targets are located. Can be full size 
+        frame           : the number of the frame where the targets are located. Can be full size
                           or half size U frame. TO DO: need to confirm size of the half-U frame.
         target          : the number of the target to go to within this frame.
         visar_disable   : disable the visar laser between shots if True to not burn the streak whn gain/energy are increased due to poor target reflectivity
@@ -1176,7 +1190,7 @@ def move_to_target(config='colinear', frame_cfg=[1, 'F1', 1, 'F2', 1, 'F3'], fra
         y_step = 3.5
 #        tc_hexapod.x.mv(0.240)
 #        tc_hexapod.z.mv(0.590)
-        frame_pos = x_start_pos 
+        frame_pos = x_start_pos
         if (frame > 1):
     	# -1 to not account for the first frame, and count for the other position in the array
             for idx in np.arange(0, 2*(frame-1), 2):
@@ -1238,7 +1252,7 @@ def move_to_target(config='colinear', frame_cfg=[1, 'F1', 1, 'F2', 1, 'F3'], fra
         print('Tweak position as appropriate.')
         # print in the eLog only the naming used by the users to avoid confusion
         msg_log_target = 'on target {}'.format(target)
-        
+
     # restore DAQ status for VISAR readiness to see visar light
     if (visar_disable == True):
         visar_mode('daq')
@@ -1278,7 +1292,7 @@ visar_window_pv = {\
 'visar2_20ns':EpicsSignal('MEC:NOTE:VIS:CAM2_DELAY20d'),
 'visar2_50ns':EpicsSignal('MEC:NOTE:VIS:CAM2_DELAY50d'),
 'visar2_100ns':EpicsSignal('MEC:NOTE:VIS:CAM2_DELAY100'),
-'visar2_200ns':EpicsSignal('MEC:NOTE:VIS:CAM2_DELAY200')}    
+'visar2_200ns':EpicsSignal('MEC:NOTE:VIS:CAM2_DELAY200')}
 
 # dictionnary of the streak window as per the GUI. Second number is streak window in ns.
 visar_window_remote = {0:0.5, 1:1, 2:2, 3:5, 4:10, 5:20, 6:50, 7:100, 8:200, 9:500, 10:1000, 11:2000, 12:5000, 13:10000, 14:20000, 15:50000}
@@ -1297,7 +1311,7 @@ def streak_timing_status(verbose=False, save=False):
         save    : push the entire current configuration to the elog.
     OUT:
         displays timing info for the VISAR system
-    ''' 
+    '''
     # getting the visar streak window
     visar1_current_window = visar1_window.get()
     visar2_current_window = visar2_window.get()
@@ -1319,7 +1333,7 @@ def streak_timing_status(verbose=False, save=False):
             print('')
         msg = msg + '\n'
 
-    # get the current streak delay, if any, at the current streak window 
+    # get the current streak delay, if any, at the current streak window
     visar1_delay = visar1_dgbox.get() - visar_window_pv['visar1_'+str(visar_window_remote[visar1_current_window])+'ns'].get()
     visar2_delay = visar2_dgbox.get() - visar_window_pv['visar2_'+str(visar_window_remote[visar2_current_window])+'ns'].get()
 
@@ -1340,7 +1354,7 @@ def streak_timing_status(verbose=False, save=False):
     msg = msg + '\n' + tmp_chr
     print(tmp_chr)
     tmp_chr = ' > Window length: {} ns.'.format(visar_window_remote[visar2_current_window])
-    msg = msg + '\n' + tmp_chr 
+    msg = msg + '\n' + tmp_chr
     print(tmp_chr)
     tmp_chr = ' > Timing offset: {:.2f} ns.'.format(1.0e9*visar2_delay)  # convert from s to ns
     msg = msg + '\n' + tmp_chr
@@ -1350,7 +1364,7 @@ def streak_timing_status(verbose=False, save=False):
     if (save == True):
         mecl = elog.ELog({'experiment':experimentName}, user='mecopr', pw=pickle.load(open('/reg/neh/operator/mecopr/mecpython/pulseshaping/elogauth.p', 'rb')))
         mecl.post(msg, run=None, tags=['visar', 'configuration', 'timing'])
-        
+
 
 def streak_window(visar=1, window=None, offset=0):
     '''
@@ -1673,10 +1687,10 @@ def spl_shot_readiness():
     imaging_system('OUT')
     if (check_tg_im_out() is False):
         print('IMAGING SYSTEM NOT OUT ... DO NOT SHOOT')
-    elif (check_tg_im_out() is True):    
+    elif (check_tg_im_out() is True):
         fw4set(position = 6)
         spl_mode('single_shot')
-        evt_seq_btn.put('Stop')   
+        evt_seq_btn.put('Stop')
         iris_move('OPEN')
         pm('OUT')
         print('You can proceed with a shot on target after the announcement:')
@@ -1684,7 +1698,7 @@ def spl_shot_readiness():
         print('"ARE ALL DIAGNOSTICS READY FOR TRIGGER?"')
 
 
-def uxi_shot(save_run=True, target_out_dark=10, target_out_white=10, target_in_white=10, post_dark=5, offset = -0.5, lpl_ener_val=1.0, timing_val=0.0e-9, arms_val='all'):
+def uxi_shot(save_run=True, target_out_dark=10, target_out_white=10, target_in_white=10, post_dark=5, offset = 0.5, lpl_ener_val=1.0, timing_val=0.0e-9, arms_val='all'):
     '''
     Description:
         Creates a complexe sequence of dark/white fields with and without the target when using the UXI detectors.
@@ -1706,17 +1720,17 @@ def uxi_shot(save_run=True, target_out_dark=10, target_out_white=10, target_in_w
     target_save()
     tc_hexapod.z.umvr(offset)
     ref_only(xray_trans=1, xray_num=target_out_white, shutters=False, dark=target_out_dark, daq_end=True, calibrant='', rate=0.5, visar=True, save=save_run, slow_cam=False)
-    # target IN 
+    # target IN
     logger.success('Moving target IN for {} white fields.'.format(target_in_white))
     target_return()
     ref_only(xray_trans=1, xray_num=target_in_white, shutters=False, dark=0, daq_end=True, calibrant='', rate=0.5, visar=True, save=save_run, slow_cam=False)
     # take the driven shot
     logger.success('Preparing for laser driven shot at {} % of the laser energy and {} ns delay with the FEL.'.format(lpl_ener_val*100., timing_val*1.0e9))
-    optical_shot(shutter_close=[1, 2, 3, 4, 5, 6], lpl_ener=lpl_ener_val, timing=timing_val, xray_threshold=0.1, xray_trans=1, prex=0, save=save_run, daq_end=True, msg='', ps_opt=True, arms=arms_val, tags_words=['optical', 'sample'], uxi=True, auto_trig=True, auto_charge=True, visar=True, slow_cam=False, debug=True) 
+    optical_shot(shutter_close=[1, 2, 3, 4, 5, 6], lpl_ener=lpl_ener_val, timing=timing_val, xray_threshold=0.1, xray_trans=1, prex=0, save=save_run, daq_end=True, msg='', ps_opt=True, arms=arms_val, tags_words=['optical', 'sample'], uxi=True, auto_trig=True, auto_charge=True, visar=True, slow_cam=False, debug=True)
     # post X-ray only
     logger.success('Target post shot for {} dark fields.'.format(post_dark))
     ref_only(xray_trans=1, xray_num=0, shutters=False, dark=post_dark, daq_end=True, calibrant='', rate=1, visar=True, save=save_run, slow_cam=False)
-    
+
 def digitizer_plot(xmin=0, xmax=32000):
     '''
     Range to zoom:
@@ -1724,7 +1738,7 @@ def digitizer_plot(xmin=0, xmax=32000):
         xmax = 6400
     '''
     fig, ax = plt.subplots()
-    ax.plot(dg1_wvfm.get(), label='Time Tool', color='Green') 
+    ax.plot(dg1_wvfm.get(), label='Time Tool', color='Green')
     ax.plot(dg0_wvfm.get(), label='Upstream TCC', color='Blue')
     ax.set_xlabel('Samples (#)')
     ax.set_ylabel('Voltage (V)')
@@ -1737,3 +1751,308 @@ def digitizer_plot(xmin=0, xmax=32000):
     plt.legend(loc = 'upper right')
     plt.tight_layout()
     plt.show()
+
+#def att_uxi():
+#    '''
+#    '''
+#    if (att_trans.position )
+
+###########################################################################################################
+####################################### phi and chi for goniometer ########################################
+###########################################################################################################
+
+import numpy as np
+import scipy.spatial.transform
+
+
+
+
+def relative_phi_scan(du, dv, dw, min_phi, max_phi, steps):
+    ''' creates a phi scan centered around du, dv, and dw
+    input:
+        du, dv, dw: euler angles of goniometer in radians (floats)
+        min_phi, max_phi: minimum and maximum of the phi scan in degrees (floats)
+        steps: number of steps (integer)
+    return:
+        uvw_array: a (n,3) matrix of u,v,w positions in the scan (degrees)
+        phi_array: a (n) matrix of phi values (degrees)
+    '''
+    du = du*np.pi/180
+    dv = dv*np.pi/180
+    dw = dw*np.pi/180
+    min_phi = min_phi*np.pi/180
+    max_phi = max_phi*np.pi/180
+    # 3D rotational matrix
+    phi_array = np.linspace(min_phi, max_phi, steps)
+
+    out = np.empty((len(phi_array),3))
+
+    for i, phi in enumerate(phi_array):
+        # initialize identity matrix
+        matrix = np.eye(3)
+        # rotate the matrix phi = v
+        rot_phi = np.array(((np.cos(phi),0,np.sin(phi)),
+                 (0,1,0),
+                 (-np.sin(phi),0,np.cos(phi))))
+        matrix = np.dot(rot_phi,matrix)
+        # rotate theta = phi = v # sample mount
+        theta = 43.065/2*np.pi/180
+        rot_theta = np.array(((np.cos(theta),0,np.sin(theta)),
+                 (0,1,0),
+                 (-np.sin(theta),0,np.cos(theta))))
+        matrix = np.dot(rot_theta, matrix)
+        # rotate the matrix du
+        rot_u = np.array(((1,0,0),
+                         (0,np.cos(du),-np.sin(du)),
+                         (0,np.sin(du),np.cos(du))))
+        matrix = np.dot(rot_u,matrix)
+        # rotate the matrix dv
+        rot_v = np.array(((np.cos(dv),0,np.sin(dv)),
+                 (0,1,0),
+                 (-np.sin(dv),0,np.cos(dv))))
+        matrix = np.dot(rot_v,matrix)
+        # rotate the matrix dw
+        rot_w = np.array(((np.cos(dw),-np.sin(dw),0),
+                         (np.sin(dw),np.cos(dw),0),
+                         (0,0,1)))
+        matrix = np.dot(rot_w,matrix)
+        # get back euler angles
+        rotation = scipy.spatial.transform.Rotation.from_matrix(matrix)
+        uvw = rotation.as_euler('xyz', degrees = True)
+        out[i,:] = uvw
+    return out, phi_array
+
+
+def relative_chi_scan(du, dv, dw, min_chi, max_chi, steps):
+    ''' creates a chi scan centered around du, dv, and dw
+    input:
+        du, dv, dw: euler angles of goniometer in degrees (floats)
+        min_chi, max_chi: minimum and maximum of the chi scan in degrees (floats)
+        steps: number of steps (integer)
+    return:
+        uvw_array: a (n,3) matrix of u,v,w positions in the scan (degrees)
+        chi_array: a (n) matrix of chi values (degrees)
+    '''
+    du = du*np.pi/180
+    dv = dv*np.pi/180
+    dw = dw*np.pi/180
+    min_chi = min_chi*np.pi/180
+    max_chi = max_chi*np.pi/180
+    # 3D rotational matrix
+    chi_array = np.linspace(min_chi, max_chi, steps)
+
+    out = np.empty((len(chi_array),3))
+
+    for i, chi in enumerate(chi_array):
+        # initialize identity matrix
+        matrix = np.eye(3)
+        # rotate the matrix chi
+        rot_chi = np.array(((1,0,0),
+                         (0,np.cos(chi),-np.sin(chi)),
+                         (0,np.sin(chi),np.cos(chi))))
+
+        matrix = np.dot(rot_chi,matrix)
+        # rotate theta = phi = v # sample mount
+        theta = 43.065/2*np.pi/180
+        rot_theta = np.array(((np.cos(theta),0,np.sin(theta)),
+                 (0,1,0),
+                 (-np.sin(theta),0,np.cos(theta))))
+        matrix = np.dot(rot_theta, matrix)
+
+        # rotate the matrix du
+        rot_u = np.array(((1,0,0),
+                         (0,np.cos(du),-np.sin(du)),
+                         (0,np.sin(du),np.cos(du))))
+        matrix = np.dot(rot_u,matrix)
+        # rotate the matrix dv
+        rot_v = np.array(((np.cos(dv),0,np.sin(dv)),
+                 (0,1,0),
+                 (-np.sin(dv),0,np.cos(dv))))
+        matrix = np.dot(rot_v,matrix)
+        # rotate the matrix dw
+        rot_w = np.array(((np.cos(dw),-np.sin(dw),0),
+                         (np.sin(dw),np.cos(dw),0),
+                         (0,0,1)))
+        matrix = np.dot(rot_w,matrix)
+        # get back euler angles
+        rotation = scipy.spatial.transform.Rotation.from_matrix(matrix)
+        uvw = rotation.as_euler('xyz', degrees = True)
+        out[i,:] = uvw
+    return out, chi_array
+
+
+
+def relative_omega_scan(du, dv, dw, min_omega, max_omega, steps):
+    ''' creates a omega scan centered around du, dv, and dw
+    input:
+        du, dv, dw: euler angles of goniometer in degrees (floats)
+        min_omega, max_omega: minimum and maximum of the omega scan in degrees (floats)
+        steps: number of steps (integer)
+    return:
+        uvw_array: a (n,3) matrix of u,v,w positions in the scan (degrees)
+        omega_array: a (n) matrix of omega values (degrees)
+    '''
+    du = du*np.pi/180
+    dv = dv*np.pi/180
+    dw = dw*np.pi/180
+    min_omega = min_omega*np.pi/180
+    max_omega = max_omega*np.pi/180
+    # 3D rotational matrix
+    omega_array = np.linspace(min_omega, max_omega, steps)
+
+    out = np.empty((len(omega_array),3))
+
+    for i, omega in enumerate(omega_array):
+        # initialize identity matrix
+        matrix = np.eye(3)
+        # rotate the matrix omega
+        rot_omega = np.array(((np.cos(omega),-np.sin(omega),0),
+                         (np.sin(omega),np.cos(omega),0),
+                         (0,0,1)))
+        matrix = np.dot(rot_omega,matrix)
+
+        # rotate theta = phi = v # sample mount
+        theta = 43.065/2*np.pi/180
+        rot_theta = np.array(((np.cos(theta),0,np.sin(theta)),
+                 (0,1,0),
+                 (-np.sin(theta),0,np.cos(theta))))
+        matrix = np.dot(rot_theta, matrix)
+
+        # rotate the matrix du
+        rot_u = np.array(((1,0,0),
+                         (0,np.cos(du),-np.sin(du)),
+                         (0,np.sin(du),np.cos(du))))
+        matrix = np.dot(rot_u,matrix)
+        # rotate the matrix dv
+        rot_v = np.array(((np.cos(dv),0,np.sin(dv)),
+                 (0,1,0),
+                 (-np.sin(dv),0,np.cos(dv))))
+        matrix = np.dot(rot_v,matrix)
+        # rotate the matrix dw
+        rot_w = np.array(((np.cos(dw),-np.sin(dw),0),
+                         (np.sin(dw),np.cos(dw),0),
+                         (0,0,1)))
+        matrix = np.dot(rot_w,matrix)
+        # get back euler angles
+        rotation = scipy.spatial.transform.Rotation.from_matrix(matrix)
+        uvw = rotation.as_euler('xyz', degrees = True)
+        out[i,:] = uvw
+    return out, omega_array
+
+def do_phi_scan(du, dv, dw, min_phi, max_phi, steps, sleep_time):
+    ''' performs a phi scan centered around du, dv, and dw
+    input:
+        du, dv, dw: euler angles of goniometer in degrees (floats)
+        max_phi, max_phi: minimum and maximum of the phi scan in degrees (floats)
+        steps: number of steps (integer)
+        sleep_time: time to sleep at each step
+    return:
+        None
+    '''
+    uvw_array, phi_array = relative_phi_scan(du, dv, dw, min_phi, max_phi, steps)
+
+    epics_du.put(float(du))
+    epics_dv.put(float(dv))
+    epics_dw.put(float(dw))
+    epics_sleep_time.put(float(sleep_time))
+
+    for uvw, phi in zip(uvw_array, phi_array):
+        tc_hexapod.u.umv(uvw[0]) # op.tc_hexapod.u.mv() to not wait...
+        tc_hexapod.v.umv(uvw[1])
+        tc_hexapod.w.umv(uvw[2])
+        epics_phi.put(float(phi))
+        time.sleep(sleep_time)
+
+def do_chi_scan(du, dv, dw, min_chi, max_chi, steps, sleep_time):
+    ''' performs a chi scan centered around du, dv, and dw
+    input:
+        du, dv, dw: euler angles of goniometer in degrees (floats)
+        min_chi, max_chi: minimum and maximum of the chi scan in degrees (floats)
+        steps: number of steps (integer)
+        sleep_time: time to sleep at each step
+    return:
+        None
+    '''
+    uvw_array, chi_array = relative_chi_scan(du, dv, dw, min_chi, max_chi, steps)
+
+    epics_du.put(float(du))
+    epics_dv.put(float(dv))
+    epics_dw.put(float(dw))
+    epics_sleep_time.put(float(sleep_time))
+
+    for uvw, chi in zip(uvw_array, chi_array):
+        tc_hexapod.u.umv(uvw[0]) # op.tc_hexapod.u.mv() to not wait...
+        tc_hexapod.v.umv(uvw[1])
+        tc_hexapod.w.umv(uvw[2])
+        epics_chi.put(float(chi))
+        time.sleep(sleep_time)
+
+def do_omega_scan(du, dv, dw, min_omega, max_omega, steps, sleep_time):
+    ''' performs a omega scan centered around du, dv, and dw
+    input:
+        du, dv, dw: euler angles of goniometer in degrees (floats)
+        min_omega, max_omega: minimum and maximum of the omega scan in degrees (floats)
+        steps: number of steps (integer)
+        sleep_time: time to sleep at each step
+    return:
+        None
+    '''
+    uvw_array, omega_array = relative_omega_scan(du, dv, dw, min_omega, max_omega, steps)
+
+    epics_du.put(float(du))
+    epics_dv.put(float(dv))
+    epics_dw.put(float(dw))
+    epics_sleep_time.put(float(sleep_time))
+
+    for uvw, omega in zip(uvw_array, omega_array):
+        tc_hexapod.u.umv(uvw[0]) # op.tc_hexapod.u.mv() to not wait...
+        tc_hexapod.v.umv(uvw[1])
+        tc_hexapod.w.umv(uvw[2])
+        epics_omega.put(float(omega))
+        time.sleep(sleep_time)
+
+
+def do_x_scan(min_x, max_x, steps, sleep_time):
+    ''' performs a x scan
+    input:
+        min_x, max_x: min and max x
+        steps: number of steps (integer)
+        sleep_time: time to sleep at each step
+    return:
+        None
+    '''
+    epics_sleep_time.put(float(sleep_time))
+    x_array = np.linspace(min_x, max_x, steps)
+    for x in x_array:
+        tc_hexapod.x.umv(x) # op.tc_hexapod.u.mv() to not wait...
+        time.sleep(sleep_time)
+
+def do_y_scan(min_y, max_y, steps, sleep_time):
+    ''' performs a y scan
+    input:
+        min_y, max_y: min and max y
+        steps: number of steps (integer)
+        sleep_time: time to sleep at each step
+    return:
+        None
+    '''
+    epics_sleep_time.put(float(sleep_time))
+    y_array = np.linspace(min_y, max_y, steps)
+    for y in y_array:
+        tc_hexapod.y.umv(y) # op.tc_hexapod.u.mv() to not wait...
+        time.sleep(sleep_time)
+
+def do_z_scan(min_z, max_z, steps, sleep_time):
+    ''' performs a z scan
+    input:
+        min_z, max_z: min and max z
+        steps: number of steps (integer)
+        sleep_time: time to sleep at each step
+    return:
+        None
+    '''
+    epics_sleep_time.put(float(sleep_time))
+    z_array = np.linspace(min_z, max_z, steps)
+    for z in z_array:
+        tc_hexapod.z.umv(z) # op.tc_hexapod.u.mv() to not wait...
+        time.sleep(sleep_time)
