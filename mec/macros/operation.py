@@ -1240,6 +1240,11 @@ def move_to_target(config='colinear', frame_cfg=[1, 'F1', 1, 'F2', 1, 'F3'], fra
         tgx.umv(pin_pos - (x_target_pos + frame_pos) + xcorr)
         #tc_hexapod.y.mv(y_target_pos + ycorr)
         tc_hexapod.y.umv(y_target_pos + ycorr)
+
+        # function to take into account offset in target plan
+        x_offset = (133.76 - tgx.position)*np.tan(0.00899)
+        tc_hexapod.x.umv(-x_offset)
+
         print('Moving to Frame {}, target {}.'.format(frame, target))
         print('Tweak position as appropriate.')
         print('The frame configuration is {}.'.format(frame_cfg))
