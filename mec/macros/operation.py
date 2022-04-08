@@ -294,10 +294,20 @@ def visar_mode(status = 'ready'):
         visar_laser_evt_code.put(43)
 
     # look at the button status (enabled:1 or diabled:0)
+    time.sleep(1)
     if (visar_streak_evr_btn.get() == 0):
         visar_streak_evr_btn.put(1)
+        print('Streak button status')
+        print('       Read Access is {}.'.format(visar_streak_evr_btn.read_access))
+        print('       Connection Timeout at {}.'.format(visar_streak_evr_btn.connection_timeout))
+    time.sleep(1)
     if (visar_laser_evr_btn.get() == 0):
         visar_laser_evr_btn.put(1)
+        print('VISAR button status:')
+        print('       Read Access is {}.'.format(visar_laser_evr_btn.read_access))
+        print('       Connection Timeout at {}.'.format(visar_laser_evr_btn.connection_timeout))
+    time.sleep(1)
+
     if (status == 'move'):
         visar_laser_evr_btn.put(0)
 
@@ -332,8 +342,10 @@ def ref_only(xray_trans=1, xray_num=10, shutters=False, dark=0, daq_end=True, ca
     msg = '{} x-ray only shots at {:.4f}% {}.'.format(xray_num, 100.0 * xray_trans, msg_log_target)
     tags_ref = ['reference', 'xray']
     # look at the button status to make sure the VISAR triggers are disabled by default (behind overwritten later with visar option), (enabled:1 or disabled:0)
+    time.sleep(1)
     if (visar_streak_evr_btn.get() == 1):
         visar_streak_evr_btn.put(0)
+    time.sleep(1)
     if (visar_laser_evr_btn.get() == 1):
         visar_laser_evr_btn.put(0)
 
@@ -473,11 +485,20 @@ def optical_shot(shutter_close=[1, 2, 3, 4, 5, 6], lpl_ener=1.0, timing=0.0e-9, 
     SiT(xray_trans)
     # check the trigger status
     if (auto_trig == True):
+        time.sleep(1)
         if (lpl_slicer_evr_btn.get() == 0):
             lpl_slicer_evr_btn.put(1)
+        time.sleep(1)
         if (lpl_lamps_evr_btn.get() == 0):
             lpl_lamps_evr_btn.put(1)
-        print('NS slicer and Lamps trigger buttons are Enabled.')
+        print('NS slicer and Lamps trigger buttons are Enabled.')   
+    # debugging the button issue
+        print('Slicer button status:')
+        print('       Read Access is {}.'.format(lpl_slicer_evr_btn.read_access))
+        print('       Connection Timeout at {}.'.format(lpl_slicer_evr_btn.connection_timeout))
+        print('Lamps button status:')
+        print('       Read Access is {}.'.format(lpl_lamps_evr_btn.read_access))
+        print('       Connection Timeout at {}.'.format(lpl_lamps_evr_btn.connection_timeout))
     else:
         print('NS slicer and Lamps trigger buttons are not being checked by the script.')
     if (uxi == True):
