@@ -15,6 +15,7 @@ from functools import partial
 #import pickle
 from mecps import *
 from pcdsdevices.epics_motor import Motor
+from pcdsdevices.slits import JJSlits 
 
 from mec.db import *
 from mec.db import mec_pulsepicker as pp
@@ -41,7 +42,6 @@ logging.addLevelName('SUCCESS', SUCCESS_LEVEL)
 logger = logging.getLogger(__name__)
 logger.success = partial(logger.log, SUCCESS_LEVEL)
 
-talbot_x=Motor('MEC:PPL:MMN:21', name='talbot_x')
 
 #thz_motor = Motor('MEC:USR:MMS:17', name='thz_motor')
 #spl_motor = Motor('MEC:USR:MMS:17', name='spl_motor')
@@ -196,6 +196,46 @@ visar_streak_evt_code = EpicsSignal('MEC:LAS:EVR:01:TRIG9:TEC')
 visar_streak_evr_btn = EpicsSignal('MEC:LAS:EVR:01:TRIG9:TCTL')
 visar_laser_evt_code = EpicsSignal('MEC:LAS:EVR:01:TRIGA:TEC')
 visar_laser_evr_btn = EpicsSignal('MEC:LAS:EVR:01:TRIGA:TCTL')
+
+# test solution when the MEC attenuators are stalled (it was added before each SiT commands)
+att1_btn=EpicsSignal('MEC:HXM:MMS:05:UPDATE_STATUS.PROC')
+att2_btn=EpicsSignal('MEC:HXM:MMS:06:UPDATE_STATUS.PROC')
+att3_btn=EpicsSignal('MEC:HXM:MMS:07:UPDATE_STATUS.PROC')
+att4_btn=EpicsSignal('MEC:HXM:MMS:08:UPDATE_STATUS.PROC')
+att5_btn=EpicsSignal('MEC:HXM:MMS:09:UPDATE_STATUS.PROC')
+att6_btn=EpicsSignal('MEC:HXM:MMS:10:UPDATE_STATUS.PROC')
+att7_btn=EpicsSignal('MEC:HXM:MMS:11:UPDATE_STATUS.PROC')
+att8_btn=EpicsSignal('MEC:HXM:MMS:12:UPDATE_STATUS.PROC')
+att9_btn=EpicsSignal('MEC:HXM:MMS:13:UPDATE_STATUS.PROC')
+att10_btn=EpicsSignal('MEC:HXM:MMS:14:UPDATE_STATUS.PROC')
+attClear_btn=EpicsSignal('MEC:ATT:COM:STATUS')
+
+#jj slit usage example:
+#    width = gap
+#    center = offset
+
+#mec_jj_1.xwidth.get()
+#mec_jj_1.xcenter.get()
+
+#mec_jj_1.xwidth.put(2)
+#mec_jj_1.xcenter.put(2)
+#
+#mec_jj_1.ywidth.get()
+#mec_jj_1.ycenter.get()
+
+def att_update():
+    att1_btn.put(1)
+    att2_btn.put(1)
+    att3_btn.put(1)
+    att4_btn.put(1)
+    att5_btn.put(1)
+    att6_btn.put(1)
+    att7_btn.put(1)
+    att8_btn.put(1)
+    att9_btn.put(1)
+    att10_btn.put(1)
+    attClear_btn.put(1)
+###############
 
 # event seauencer control
 evt_seq_btn = EpicsSignal('ECS:SYS0:6:PLYCTL')
@@ -408,6 +448,7 @@ def ref_only(xray_trans=1, xray_num=10, shutters=False, dark=0, daq_end=True, ca
     pp.flipflop()
     x.nsl.prex=xray_num
     x.nsl.during=0
+    att_update()
     SiT(xray_trans)
     if (daq_end == True):
         p=x.nsl.shot(record=save, end_run=True)
@@ -482,6 +523,7 @@ def optical_shot(shutter_close=[1, 2, 3, 4, 5, 6], lpl_ener=1.0, timing=0.0e-9, 
     nstiming.mv(timing)
     nstiming.get_delay()
     # to change the Xray transmission for the driven shot
+    att_update()
     SiT(xray_trans)
     # check the trigger status
     if (auto_trig == True):
@@ -543,7 +585,9 @@ def optical_shot(shutter_close=[1, 2, 3, 4, 5, 6], lpl_ener=1.0, timing=0.0e-9, 
 # For delay line in the chamber:
 # delay_line_t0 to change manually for now
 # mm
-delay_line_t0 = 36.616
+# for LY27
+delay_line_t0 = -12.4
+#delay_line_t0 = 36.616
 # mm/ps
 delay_line_calib = 0.149896229
 
@@ -641,6 +685,7 @@ def spl_shot(nshot=1, gaia_offset=0., delay=0.0e-9, xray_trans=1, msg='', tags_w
         execute the plan and post a comment to the elog.
     '''
     # to change the Xray transmission for the driven shot
+    att_update()
     SiT(xray_trans)
     # set the uniblitz mode to provide 5Hz but protected by the uniblitz. Used for all DAQ modes.
     spl_mode(mode='single_shot')
@@ -820,6 +865,7 @@ def rs():
 #            print('in')
 #            time.sleep(0.2)
 #        print('out', motor, motor.get())
+#        print('out':JJ1:JAWS:XCENTER.VAL
 #    print('Motor {} reached destination.'.format(motor))
 
 def tg_pin():
